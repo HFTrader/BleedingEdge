@@ -69,4 +69,4 @@ Hope you enjoy this work.
 
 Please contribute.
 
-This project is possible thanks to [Vitorian LLC](www.vitorian.com) and [HB Quant](www.hbquant.com).
+This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [HB Quant] (http://www.hbquant.com).
