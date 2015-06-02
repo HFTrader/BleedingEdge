@@ -39,6 +39,24 @@ Within this configuration file (in json format duh) there should be a list of co
 
 3. the one that has the highest version that is lower than the version the user specified - this is a lower bound
 
+Here is a description of the fields that are supported in the configuration.
+
+- version: most used of fields. It indicates the particular version that this package is in. It should be in the format of a dot-separated string as '1.2.3' but we dont particularly enforce that. One needs to be careful that version strings are transformed in keys to be used when we need to find a version that is not an exact match. This is described below.
+
+- url: Where to download the tarball from. You would usually use the key {dirname}. it is okay to put the version number explicitly here but beware that if say, user asks for binutils version 2.27 and the last available is 2.25, the 2.25 config will be used. In this case, if the URL is specified as `ftp.gnu.org/gnu/binutils/binutils-2.25.tar.gz` then we will not be able to pick up the 2.27 version from the ftp site. You will have to create another entry in the config, which is not ideal. So please use the {dirname} key.
+
+- dirname: the name of this key is not intuitive but I could not find a better one. It is the name of the directory under config (and under build) that will hold configs and the build, respectively. Examples are `binutils-2.25` and `gcc-5.0.1`. The configuration directory, for example, will be `<yourscriptdir>/config/gcc-5.0.1/`. I've added the default to all the configs so far just to make it explicit.
+
+- configure: the script that will prepare the code to build. It defaults to `./configure --prefix={installdir}/{dirname}` but I've added the default to the configs so far for clarity as well. This is the place where you would include all your patches as well.
+
+- make: the shell script that will compile the code. The default is `make`.
+
+- install: the shell script that will install/stage the file. It defaults to `make install`.
+
+- deploy: the shell script that will deploy the file to its final location. This defaults to an rsync and you should not modify it.
+
+Notice that you could add your own fields and refer to them in your action scripts, that's completely valid.
+
 The algorithm that I came up to normalize version numbers is very simple - I split the version and pad each part with zeros. Eg if the version is 1.2.3 then the normalized version will be 00001.00002.00003. I'm sure there's something smarter than this - please test and contribute! But it's working fine so far.
 
 Once a configuration is found, the manager will try to find a specialized builder for that package and version. Right now there are none. But I thought of leaving this opening here in the case that we come across some crazy package that needs special treatment. The custom builder would be in

@@ -15,11 +15,11 @@ class BuildManager():
     # by providing a tag like 'bleeding', 'stable', 'fred', etc
     # Make sure these tags exist in the configs otherwise you will end up
     # empty handed as it will not match anything
-    def __init__( self, location = "default", tag = None ):
+    def __init__( self, location = "default", tags = ['default',] ):
         # you can specify several locations in your ~/.bleedingedge.json file
         # the default would be just 'default'
         # used to filter out all configurations that are not tagged with this
-        self.tag = tag
+        self.tags = tags
 
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
@@ -57,9 +57,6 @@ class BuildManager():
                             'deploydir': self.deploydir } }
                 # write a pretty json for their amusement
                 f.write( json.dumps( cfg, indent=4, separators=(',',': ') ) )
-
-        # Cache package configuration - is this necessary?
-        self.cache = {}
 
         # build default directories
         for dname in (self.repodir,self.builddir,self.installdir, self.deploydir):
@@ -129,17 +126,31 @@ class BuildManager():
                 mname = self.resolve( '{name}-{version}' )
                 module = imp.load_source( mname, srcfile )
                 bld = module.Builder( self, pkgname, version )
-                self.cache[ (pkgname, version) ] = bld
                 return bld
         return Builder( self, pkgname, version )
 
     def getPackage( self, pkgname, version=None ):
-        # retrieves the configuration for a given package and version
-        # First, check if we have done this before and it is in cache
-        pkg = self.cache.get( (pkgname,version) )
+        # we make this in two steps because we have to transform
+        # the configuration that is in the file and stuff it with defaults
+        # if they are not present.
+        # Doing this way we also can reuse a config from a previous version and
+        # modify them
+        pkg = copy.deepcopy( self.__getPackage( pkgname, version ) )
         if pkg is not None:
-            return self.cache[ (pkgname,version) ]
+            # tag is not required
+            # if not present, it is implicitly assumed to be 'default'
+            if not 'tags' in pkg:
+                pkg['tags'] = ['default']
+            # Version can be different - we might have specified gcc 4.2.8 but
+            # the only config available is gcc 5.1.2 which we assume is o.k.
+            if (version is not None) and (not 'version' in pkg):
+                pkg['version'] = version
+            # 'name' is not a required field since it's implicit on the file
+            # location so we just add it here for consistency.
+            pkg['name'] = pkgname
+        return pkg
 
+    def __getPackage( self, pkgname, version=None ):
         # Then, we need to find a configuration file for this package
         # that resides on the same directory than this script, in
         # config/<packagename>/package.json
@@ -155,18 +166,11 @@ class BuildManager():
         # if configuration is just a dict, meaning there is only one, return it
         if isinstance( js, dict ):
             # Returns it only if this config's tag matches what we've specified
-            if (self.tag is not None) and ('tags' in js):
-                if not self.tag in js['tags']:
-                    print "Could not find a valid configuration tagged with", self.tag
-                    return False
-            # Just update this config with our name and version
-            # 'name' is not a required field since it's implicit on the file
-            # location so we just add it here for consistency.
-            # Version can be different - we might have specified gcc 4.2.8 but
-            # the only config available is gcc 5.1.2 which we assume is o.k.
-            js['name'] = pkgname
-            if version:
-                js['version'] = version
+            if (self.tags is not None) and ('tags' in js):
+                if not all( [ t in js['tags'] for t in self.tags ] ):
+                    print "Could not find a valid configuration with tags:"
+                    print '    ', ','.join(self.tags)
+                    return None
             return js
 
         # pick the version that best approximates AND has our tag (if any)
@@ -180,9 +184,7 @@ class BuildManager():
                     continue
             # check if we have a perfect match
             vs = item['version']
-            if version is not None and vs==version:
-                item['name'] = pkgname
-                self.cache[ (pkgname,version) ] = item
+            if (version is not None) and (vs==version):
                 return item
             # no, canonicalize the version so to pick the best
             key = '.'.join( [ '%-5s' % v for v in vs.split('.') ])
@@ -196,19 +198,10 @@ class BuildManager():
                     # As the configs are sorted in reverse order, the first
                     # one that satisfies this is the lower bound we want
                     print "Found ",pkgname," version ", item['version']
-                    item = copy.deepcopy( item )
-                    item['name'] = pkgname
-                    item['version'] = version # we know version is not None
-                    self.cache[ (pkgname,version) ] = item
                     return item
 
         # otherwise, return the first version available if everything was wrong
-        item = copy.deepcopy(js[0])
-        item['name'] = pkgname
-        if version:
-            item['version'] = version
-        self.cache[ (pkgname,version) ] = item
-        return item
+        return js[0]
 
     def resolve( self, newval, pkg=None ):
         # Substitutes all {} until there is no more changes
@@ -393,7 +386,7 @@ if __name__=="__main__":
     # we need to add some command line options here to the script is usable
     # in standalone mode
     print "This is just an example of how to use BE install gcc"
-    mgr = BuildManager( tag="stable" )
+    mgr = BuildManager( tags=("stable",) )
     mgr.deploy( 'gcc' )
 
     # or use the more fine-grained approach
