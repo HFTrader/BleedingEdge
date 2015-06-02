@@ -26,7 +26,7 @@ Within this configuration file (in json format duh) there should be a list of co
 The algorithm that I came up to normalize version numbers is very simple - I split the version and pad each part with zeros. Eg if the version is 1.2.3 then the normalized version will be 00001.00002.00003. I'm sure there's something smarter than this - please test and contribute! But it's working fine so far.
 
 Once a configuration is found, the manager will try to find a specialized builder for that package and version. Right now there are none. But I thought of leaving this opening here in the case that we come across some crazy package that needs special treatment. The custom builder would be in
-    <scriptdir>/config/<pkgname>/<pkgname>-<version>.py
+    < scriptdir >/config/< pkgname >/< pkgname >-< version >.py
 or
-    <scriptdir>/config/<pkgname>/<pkgname>.py
+    < scriptdir >/config/< pkgname >/< pkgname >.py
 the python script should contain one class called 'Builder', which will be instantiated. It needs to contain the same methods that in the Builder original. You are welcome to create the first custom!
