@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "1.0.3",
+    "url":       "http://www.multiprecision.org/mpc/download/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./configure --disable-shared --enable-static --prefix={installdir}/{dirname} --with-gmp={installdir}/gmp-6.0.0 --with-mpfr={installdir}/mpfr-3.1.2"
 } ]

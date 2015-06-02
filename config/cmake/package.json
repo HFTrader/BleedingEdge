@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "3.2.2",
+    "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "CXX={deploydir}/bin/g++ CC={deploydir}/bin/gcc ./configure --prefix={installdir}/{dirname}"
 } ]

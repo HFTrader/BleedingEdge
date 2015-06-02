@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "6.0.0",
+    "url":       "https://gmplib.org/download/gmp/{dirname}.tar.bz2",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./configure --with-sysroot=/usr --disable-shared --enable-static --prefix={installdir}/{dirname}"
 } ]

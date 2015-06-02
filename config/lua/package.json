@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "5.1.5",
+    "url":       "http://www.lua.org/ftp/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "cat Makefile | sed 's/\/usr\/local/\.\.\/\.\.\/install\/{dirname}/' > mk.1; cp Makefile Makefile.old; cp mk.1 Makefile; make linux"
 } ]

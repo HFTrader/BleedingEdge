@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "2.4.1",
+    "url":       "http://www.nano-editor.org/dist/v2.4/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./configure --prefix={installdir}/{dirname} --with-ncurses"
 } ]

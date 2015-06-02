@@ -1,6 +1,16 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "5.1.0",
+    "tags": [ "bleeding" ],
+    "depends": [ "libtool", "mpc", "mpfr", "gmp" ],
+    "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "LDFLAGS=\"-L{deploydir}/lib\" CFLAGS=\"-O2 -I{deploydir}/include\" CPPFLAGS=\"-O2 -I{deploydir}/include\" ./configure --prefix={installdir}/{dirname} --enable-languages=c,c++ --enable-threads=posix --enable-tls --disable-shared --enable-libgomp  --enable-lto  --disable-nls --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap  --with-fpmath=sse --enable-__cxa_atexit --with-long-double-128 --enable-secureplt --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir}/lib --with-mpfr={deploydir}/lib --with-mpc={deploydir}/lib"
+},
+{
+    "version":   "4.9.2",
+    "tags": [ "stable" ],
+    "depends": [ "libtool", "mpc", "mpfr", "gmp" ],
+    "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "LDFLAGS=\"-L{deploydir}/lib\" CFLAGS=\"-O2 -I{deploydir}/include\" CPPFLAGS=\"-O2 -I{deploydir}/include\" ./configure --prefix={installdir}/{dirname} --enable-languages=c,c++ --enable-threads=posix --enable-tls --disable-shared --enable-libgomp  --enable-lto  --disable-nls --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap  --with-fpmath=sse --enable-__cxa_atexit --with-long-double-128 --enable-secureplt --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir}/lib --with-mpfr={deploydir}/lib --with-mpc={deploydir}/lib"
 } ]

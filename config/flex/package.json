@@ -1,6 +1,6 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "2.5.39",
+    "url":       "http://downloads.sourceforge.net/project/flex/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"
 } ]
