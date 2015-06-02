@@ -1,0 +1,6 @@
+[ {
+    "version":   "2.4.6",
+    "url":       "http://ftp.gnu.org/gnu/libtool/{dirname}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname}"
+} ]
