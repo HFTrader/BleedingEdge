@@ -401,6 +401,6 @@ if __name__=="__main__":
     bld = mgr.getBuilder( "gcc", "4.9.2" )
     bld.checkout() and \
       bld.configure() and \
-      build.make() and \
-      build.install() and \
-      build.deploy()
+      bui.make() and \
+      bui.install() and \
+      bui.deploy()
