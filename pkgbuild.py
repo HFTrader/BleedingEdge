@@ -83,6 +83,19 @@ class BuildManager():
                     print >> sys.stderr, "Error: path exists but is not", \
                         "a directory:", dname
 
+    def parse( self, pkgstring ):
+        # this gets complicated because some damn packages have a dash on them as apache-maven
+        # we need a routine to parse the command-line and generate a package name and version
+        cfgdir = os.path.join( self.thisdir, 'config' )
+        pkgnames = [ v for v in os.listdir( cfgdir ) if os.path.isdir( os.path.join(cfgdir,v) ) ]
+        splits = pkgstring.split( '-' )
+        for j in range(1,len(splits)+1):
+            pkgname = '-'.join(splits[0:j])
+            version = '-'.join(splits[j:-1])
+            if pkgname in pkgnames:
+                return (pkgname,version)
+        return None,None
+
     def updateStatus( self, pkgname, version, done ):
         # we keep the status in the install directory as a touched file
         # with the timestamp of when the deployment has completed
@@ -235,12 +248,12 @@ class BuildManager():
             if (version is not None) and (vs==version):
                 return item
             # no, canonicalize the version so to pick the best
-            key = '.'.join( [ '%-5s' % v for v in vs.split('.') ])
+            key =  [ '%-5s' % v for v in vs.split('.') ]
             allvs.append( (key,item) )
 
         # try to find one version whose key is equal or greater the spec
         if version:
-            vskey = '.'.join( [ '%-5s' % v for v in version.split('.') ])
+            vskey = [ '%-5s' % v for v in version.split('.') ]
             for key,item in sorted( allvs, key=lambda x: x[0], reverse=True ):
                 if key<vskey:
                     # As the configs are sorted in reverse order, the first
@@ -449,6 +462,12 @@ if __name__=="__main__":
 
     mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
     mgr = BuildManager( tags=mytags, location=opt.location, config=opt.config )
+
     for pkg in opt.packages:
-        pkgv = pkg.split( '-', 1 )
-        mgr.deploy( *pkgv )
+        # things get dicy for cases like apache-maven-3.3.3
+        # (pkgname,version) = (apache,maven-3.3.3) or (apache-maven,3.3.3)?
+        pkgname,version = mgr.parse( pkg )
+        if pkgname is None:
+            print "Package string",pkg,"does not match any in database"
+        else:
+            mgr.deploy( pkgname, version )
