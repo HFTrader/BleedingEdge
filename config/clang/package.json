@@ -1,0 +1,7 @@
+[ {
+    "version":   "3.6.1",
+    "depends": [ "cmake" ],
+    "url":   "http://llvm.org/releases/{version}",
+    "dirname":   "{name}-{version}",
+    "configure": "mkdir llvm-{version}/build; cd llvm-{version}/build; cmake -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX={installdir}/{dirname} .."
+} ]

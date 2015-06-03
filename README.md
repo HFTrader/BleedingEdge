@@ -55,6 +55,8 @@ Here is a description of the fields that are supported in the configuration.
 
 - deploy: the shell script that will deploy the file to its final location. This defaults to an rsync and you should not modify it.
 
+- depends: list with all dependencies. Each dependency can be a single string, without mention to the version as "zlib" or a tuple/list with the name and version as in ("zlib","2.5"). In the case that you omit the version, you should then trust that the tag you provided will filter out the versions you dont want.
+
 Notice that you could add your own fields and refer to them in your action scripts, that's completely valid.
 
 The algorithm that I came up to normalize version numbers is very simple - I split the version and pad each part with zeros. Eg if the version is 1.2.3 then the normalized version will be 00001.00002.00003. I'm sure there's something smarter than this - please test and contribute! But it's working fine so far.

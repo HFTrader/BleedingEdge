@@ -8,6 +8,12 @@ import shutil
 import copy
 import imp
 from datetime import datetime
+import argparse
+
+def nowstr():
+    # Helper to provide timestamp for logging. It's in local time
+    return datetime.now().strftime( "%Y/%m/%d %H:%M:%S" )
+
 
 class BuildManager():
     # This is the build manager. It is the main entry point in the library
@@ -72,6 +78,24 @@ class BuildManager():
                     print >> sys.stderr, "Error: path exists but is not", \
                         "a directory:", dname
 
+    def updateStatus( self, pkgname, version, done ):
+        # we keep the status in the install directory as a touched file
+        # with the timestamp of when the deployment has completed
+        fname = self.resolve( "{installdir}/{pkgname}-{version}.done",
+                              {'pkgname':pkgname,'version':version} )
+        if done:
+            with open( fname, "w" ) as f:
+                f.write( nowstr() )
+        else:
+            # remove the sentinel
+            if os.path.isfile( fname ):
+                os.unlink( fname )
+
+    def checkIsDeployed( self, pkgname, version ):
+        fname = self.resolve( "{installdir}/{pkgname}-{version}.done",
+                              {'pkgname':pkgname,'version':version} )
+        return os.path.isfile( fname )
+
     def deploy( self, pkgname, version=None ):
         # Executes all steps to retrieve this package, compile and install in
         # its final destination.
@@ -94,11 +118,23 @@ class BuildManager():
         # TODO Perhaps we should add a completion test for the configure(), make(),
         # install() and deploy() steps in the same way we do with checkout()
         bld = self.getBuilder( pkgname, version )
-        return  bld.checkout() and \
-                bld.configure() and \
-                bld.make() and \
-                bld.install() and \
-                bld.deploy()
+
+        # Check if this package is already deployed
+        # we use the builder's version because ours can be None
+        if self.checkIsDeployed( pkgname, bld.version ):
+            print "Package",pkgname,bld.version,': nothing to do'
+            return True
+
+        # Not deployed, go through the compilation process again
+        ok = bld.checkout() and \
+              bld.configure() and \
+              bld.make() and \
+              bld.install() and \
+              bld.deploy()
+
+        # update this package's status
+        self.updateStatus( pkgname, bld.version, ok )
+        return ok
 
     def getDependencies( self, pkgname, version=None ):
         # Simply return the 'depends' field in the config file
@@ -119,13 +155,16 @@ class BuildManager():
         # if both are not found, returns just the default Builder
         altfiles = []
         if version:
-            altfiles.append( "%s/config/%s-%s.py" % (self.thisdir,pkgname,version) )
-        altfiles.append( "%s/config/%s.py" % (self.thisdir,pkgname) )
+            altfiles.append( "%s/config/%s/%s-%s.py" % (self.thisdir,pkgname,pkgname,version) )
+        altfiles.append( "%s/config/%s/%s.py" % (self.thisdir,pkgname,pkgname) )
         for srcfile in altfiles:
             if os.path.isfile( srcfile ):
-                mname = self.resolve( '{name}-{version}' )
+                if version:
+                    mname = 'custom-%s-%s' % (pkgname,version,)
+                else:
+                    mname = 'custom-%s' % (pkgname,)
                 module = imp.load_source( mname, srcfile )
-                bld = module.Builder( self, pkgname, version )
+                bld = module.CustomBuilder( self, pkgname, version )
                 return bld
         return Builder( self, pkgname, version )
 
@@ -227,6 +266,7 @@ class Builder:
         self.pkgname  = pkgname
         self.version  = version
         self.pkg      = buildmgr.getPackage( pkgname, version )
+        self.version  = self.pkg['version']
         self.logfile = self.resolve( "{builddir}/{dirname}.log" )
         self.errfile = self.resolve( "{builddir}/{dirname}.err" )
         self.logf = open( self.logfile,'a+')
@@ -250,6 +290,23 @@ class Builder:
         # Resolves all {} dependencies in a string
         return self.buildmgr.resolve( value, self.pkg )
 
+    def download( self, url, pkgfile ):
+        if os.path.exists( pkgfile ):
+            return True
+        try:
+            print "Downloading [%s] from [%s]" % (pkgfile,url)
+            usock = urllib2.urlopen(url)
+            data = usock.read()
+            usock.close()
+            with open( pkgfile, 'w' ) as fout:
+                fout.write( data )
+            print "[%s] downloaded to [%s]" % (url, pkgfile)
+        except Exception, e:
+            print >> sys.stderr, "Exception while downloading [%s]: %s" \
+                                  % (url,e)
+            return False
+        return True
+
     def checkout( self ):
         # Downloads and extracts the tarball file form the web
         # Perhaps we could augment this to include svn/git like from github?
@@ -263,18 +320,8 @@ class Builder:
                 self.pkg['ext'] = self.filetype( url )
             pkgfile = self.resolve( "{builddir}/{name}-{version}.{ext}" )
             self.pkg['pkgfile'] = pkgfile
-        if not os.path.exists( pkgfile ):
-            try:
-                print "Downloading [%s] from [%s]" % (pkgfile,url)
-                usock = urllib2.urlopen(url)
-                data = usock.read()
-                usock.close()
-                with open( pkgfile, 'w' ) as fout:
-                    fout.write( data )
-                print "[%s] downloaded to [%s]" % (url, pkgfile)
-            except Exception, e:
-                print >> sys.stderr, "Exception while downloading [%s]: %s" % (url,e)
-                return False
+        if not self.download( url, pkgfile ):
+            return False
         dirname = self.pkg.get('dirname')
         if not dirname:
             dirname = '{name}-{version}'
@@ -306,15 +353,11 @@ class Builder:
             print "Command failed with status", status
         return status == 0
 
-    def now( self ):
-        # Helper to provide timestamp for logging. It's in local time
-        return datetime.now().strftime( "%Y/%m/%d %H:%M:%S" )
-
     def runcmd( self, cmd ):
         # Run a system command, funneling stdout and stderr to the respective
         # configuration logs
         cmd = self.resolve( cmd )
-        logstr = "%s %s\n%s\n" % ("*"*30, self.now(), cmd)
+        logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
         self.logf.write( logstr )
         self.logf.flush()
         self.errf.write( logstr )
@@ -382,18 +425,16 @@ class Builder:
         return True
 
 if __name__=="__main__":
-    # this is just an example of usage
-    # we need to add some command line options here to the script is usable
-    # in standalone mode
-    print "This is just an example of how to use BE install gcc"
-    mgr = BuildManager( tags=("stable",) )
-    mgr.deploy( 'binutils' )
+    parser = argparse.ArgumentParser()
+    parser.add_argument( 'packages', nargs='*' )
+    parser.add_argument( '--tags', '-t' )
+    opt = parser.parse_args()
 
-    # or use the more fine-grained approach
-    mgr = BuildManager()
-    bld = mgr.getBuilder( "gcc", "4.9.2" )
-    bld.checkout() and \
-      bld.configure() and \
-      bui.make() and \
-      bui.install() and \
-      bui.deploy()
+    if len(opt.packages)==0:
+        parser.print_help()
+
+    mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
+    mgr = BuildManager( tags=mytags )
+    for pkg in opt.packages:
+        pkgv = pkg.split( '-', 1 )
+        mgr.deploy( *pkgv )

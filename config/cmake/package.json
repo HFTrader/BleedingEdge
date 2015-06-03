@@ -2,5 +2,6 @@
     "version":   "3.2.2",
     "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
+    "depends":   [ "gcc" ],
     "configure": "CXX={deploydir}/bin/g++ CC={deploydir}/bin/gcc ./configure --prefix={installdir}/{dirname}"
 } ]
