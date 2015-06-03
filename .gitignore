@@ -1,6 +1,11 @@
 # emacs temporaries
 *~
 
+# these are created by default but are not part of the source
+build/
+deploy/
+install/
+
 # Compiled Object files
 *.slo
 *.lo
