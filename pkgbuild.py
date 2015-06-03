@@ -91,7 +91,7 @@ class BuildManager():
 
         # Now that the dependencies are installed, finally proceed with this
         # package's installation procedures.
-        # Perhaps we should add a completion test for the configure(), make(),
+        # TODO Perhaps we should add a completion test for the configure(), make(),
         # install() and deploy() steps in the same way we do with checkout()
         bld = self.getBuilder( pkgname, version )
         return  bld.checkout() and \
@@ -179,8 +179,8 @@ class BuildManager():
         allvs = []
         for item in js:
             # pass if this config does not have our tag
-            if (self.tag is not None) and ('tags' in item):
-                if not self.tag in item['tags']:
+            if (self.tags is not None) and ('tags' in item):
+                if not all( [ t in item['tags'] for t in self.tags ] ):
                     continue
             # check if we have a perfect match
             vs = item['version']
@@ -387,7 +387,7 @@ if __name__=="__main__":
     # in standalone mode
     print "This is just an example of how to use BE install gcc"
     mgr = BuildManager( tags=("stable",) )
-    mgr.deploy( 'gcc' )
+    mgr.deploy( 'binutils' )
 
     # or use the more fine-grained approach
     mgr = BuildManager()
