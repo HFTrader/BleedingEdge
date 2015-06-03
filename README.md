@@ -12,13 +12,31 @@ The key design aspects are:
 2. Be simple to create and maintain
 3. Support multiple versions of the same package
 
+This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [HB Quant] (http://www.hbquant.com).
+
 ## How it works
 
 The package works with one script as the entry point, the one at root:
 
-`    pkgbuild.py`
+```
+$ ./pkgbuild.py
 
-I'm still working on the command line so <right now> you'd have to hack into the `__main__` in the script and customize it to be usable. What's there as an example is the compilation of gcc 4.9.2.
+usage: pkgbuild.py [-h] [--tags TAGS] [packages [packages ...]]
+
+positional arguments:
+  packages
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --tags TAGS, -t TAGS
+
+```
+Some examples:
+
+```
+./pkgbuild gcc clang    (will use the 'default' tag)
+./pkgbuild --tags bleeding  ncurses libelf libtool
+```
 
 The script when starts, should instantiate one BuildManager object, whose constructor takes two parameters:
 
@@ -42,6 +60,8 @@ Within this configuration file (in json format duh) there should be a list of co
 Here is a description of the fields that are supported in the configuration.
 
 - version: most used of fields. It indicates the particular version that this package is in. It should be in the format of a dot-separated string as '1.2.3' but we dont particularly enforce that. One needs to be careful that version strings are transformed in keys to be used when we need to find a version that is not an exact match. This is described below.
+
+- tags: a list of strings (tags) associated with this particular configuration
 
 - url: Where to download the tarball from. You would usually use the key {dirname}. it is okay to put the version number explicitly here but beware that if say, user asks for binutils version 2.27 and the last available is 2.25, the 2.25 config will be used. In this case, if the URL is specified as `ftp.gnu.org/gnu/binutils/binutils-2.25.tar.gz` then we will not be able to pick up the 2.27 version from the ftp site. You will have to create another entry in the config, which is not ideal. So please use the {dirname} key.
 
@@ -69,7 +89,7 @@ or
 
 `    <scriptdir>/config/<pkgname>/<pkgname>.py `
 
-This python script should contain one class called 'Builder', which will be instantiated. It needs to contain the same methods that in the Builder original. You are welcome to create the first custom!
+This specialized python script should contain one class called 'CustomBuilder', which will be instantiated. It needs to contain the same methods that in the Builder original.  `clang` has a messy hierarchy structure so it required a custom builder in config/clang.py that overrides the checkout() call. Use it as an example.
 
 In BuildManager.deploy() the manager will attempt to call these methods of the builder in sequence:
 
@@ -85,8 +105,17 @@ In BuildManager.deploy() the manager will attempt to call these methods of the b
 
 There are many advantages on having this staging 2-step process of install and deploy. It is cleaner and allows one to create packages (think rpm or debian) which is not implemented yet but it's in the plans.
 
+Once the builder deploys this package successfully, it generates a sentinel file in {installdir}/{pkgname}-{version}.done.
+
 Hope you enjoy this work.
 
 Please contribute.
 
-This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [HB Quant] (http://www.hbquant.com).
+# TODO
+
+- create more packages
+- add relevant tags into existing configurations
+- test, test, test
+- be creative and propose solutions. But please get me involved.
+
+I can be reached out at henry-at-vitorian.com
