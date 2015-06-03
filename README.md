@@ -81,7 +81,7 @@ Notice that you could add your own fields and refer to them in your action scrip
 
 The algorithm that I came up to normalize version numbers is very simple - I split the version and pad each part with zeros. Eg if the version is 1.2.3 then the normalized version will be 00001.00002.00003. I'm sure there's something smarter than this - please test and contribute! But it's working fine so far.
 
-Once a configuration is found, the manager will try to find a specialized builder for that package and version. Right now there are none. But I thought of leaving this opening here in the case that we come across some crazy package that needs special treatment. The custom builder would be in
+Once a configuration is found, the manager will try to find a specialized builder for that package and version. Right now there is clang.py only. This is in the case that we come across some crazy package that needs special treatment. The custom builder would be in
 
 `    <scriptdir>/config/<pkgname>/<pkgname>-<version>.py `
 
