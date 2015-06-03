@@ -11,6 +11,8 @@ The key design aspects are:
 1. Keep and install repositories as a user, no root/superuser required
 2. Be simple to create and maintain
 3. Support multiple versions of the same package
+4. Have the ability to select individual versions of packages by the use of tags
+5. Be able to deploy into different locations (think `--prefix <installdir>`)
 
 This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [HB Quant] (http://www.hbquant.com).
 
@@ -19,9 +21,12 @@ This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [
 The package works with one script as the entry point, the one at root:
 
 ```
+
 $ ./pkgbuild.py
 
-usage: pkgbuild.py [-h] [--tags TAGS] [packages [packages ...]]
+usage: pkgbuild.py [-h] [--tags TAGS] [--location LOCATION]
+                   [--platform PLATFORM]
+                   [packages [packages ...]]
 
 positional arguments:
   packages
@@ -29,14 +34,20 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --tags TAGS, -t TAGS
+  --location LOCATION, -l LOCATION
+  --platform PLATFORM, -p PLATFORM
 
 ```
 Some examples:
 
 ```
-./pkgbuild gcc clang    (will use the 'default' tag)
-./pkgbuild --tags bleeding  ncurses libelf libtool
+./pkgbuild --platform=Windows gcc clang    (will use the 'default' tag)
+./pkgbuild --tags=bleeding --location=fxdesk ncurses libelf libtool
 ```
+
+The default platform is the one resulting from `platform.system()` on python. On Linux this is "Linux". If the platform is Linux, the package's configuration file will be in `<scriptdir>/config/{pkgname}/packages.json`. If the package is not Linux though then the configuration file is expected to be in `<scriptdir>/config/{pkgname}/packages.{platform}.json`
+
+The option "--location" indicates which set of directories in your configuration file will be selected. Usually this global configuration file is located in "~/.bleedingedge.json". Within this file there must be a dictionary whose keys are the strings specified in this argument.
 
 The script when starts, should instantiate one BuildManager object, whose constructor takes two parameters:
 

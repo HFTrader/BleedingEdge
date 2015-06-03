@@ -9,11 +9,11 @@ import copy
 import imp
 from datetime import datetime
 import argparse
+import platform as plat
 
 def nowstr():
     # Helper to provide timestamp for logging. It's in local time
     return datetime.now().strftime( "%Y/%m/%d %H:%M:%S" )
-
 
 class BuildManager():
     # This is the build manager. It is the main entry point in the library
@@ -21,18 +21,23 @@ class BuildManager():
     # by providing a tag like 'bleeding', 'stable', 'fred', etc
     # Make sure these tags exist in the configs otherwise you will end up
     # empty handed as it will not match anything
-    def __init__( self, location = "default", tags = ['default',] ):
+    def __init__( self, location = "default",
+                  tags = ['default',],
+                  platform=plat.system(),
+                  config="~/.bleedingedge.json" ):
         # you can specify several locations in your ~/.bleedingedge.json file
         # the default would be just 'default'
         # used to filter out all configurations that are not tagged with this
         self.tags = tags
 
+        # This is the default platform
+        self.platform = platform
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
 
         # try to open the main config to read where the files will be
-        usercfg = os.path.expanduser( "~/.bleedingedge.json" )
+        usercfg = os.path.expanduser( config )
         if os.path.isfile( usercfg ):
             # found main config, read
             with open( usercfg ) as f:
@@ -102,13 +107,17 @@ class BuildManager():
         # First, attempt to check if there are any dependencies. If so, attempt
         # to install/deploy them first. Note that the order of the dependencies
         # IS important
+        pkg = self.getPackage( pkgname, version )
+        if version is None:
+            version = pkg.get('version')
+            print "Package",pkgname,"version not provided, found:", version
+
         for deps in self.getDependencies( pkgname, version ):
             if isinstance(deps,list):
                 depname,depver = deps
             else:
                 depname = deps
                 depver  = None
-            print ">> Deploying dependency",depname,depver
             if not self.deploy( depname, depver ):
                 print "Dependency was not satisfied. Bailing out..."
                 return False
@@ -155,15 +164,11 @@ class BuildManager():
         # if both are not found, returns just the default Builder
         altfiles = []
         if version:
-            altfiles.append( "%s/config/%s/%s-%s.py" % (self.thisdir,pkgname,pkgname,version) )
-        altfiles.append( "%s/config/%s/%s.py" % (self.thisdir,pkgname,pkgname) )
-        for srcfile in altfiles:
+            altfiles.append( ("%s-%s" % (pkgname,version), "%s/config/%s/%s-%s.py" % (self.thisdir,pkgname,pkgname,version)) )
+        altfiles.append( (pkgname, "%s/config/%s/%s.py" % (self.thisdir,pkgname,pkgname)) )
+        for modname,srcfile in altfiles:
             if os.path.isfile( srcfile ):
-                if version:
-                    mname = 'custom-%s-%s' % (pkgname,version,)
-                else:
-                    mname = 'custom-%s' % (pkgname,)
-                module = imp.load_source( mname, srcfile )
+                module = imp.load_source( modname, srcfile )
                 bld = module.CustomBuilder( self, pkgname, version )
                 return bld
         return Builder( self, pkgname, version )
@@ -174,8 +179,9 @@ class BuildManager():
         # if they are not present.
         # Doing this way we also can reuse a config from a previous version and
         # modify them
-        pkg = copy.deepcopy( self.__getPackage( pkgname, version ) )
+        pkg = self.__getPackage( pkgname, version )
         if pkg is not None:
+            pkg = copy.deepcopy( pkg )
             # tag is not required
             # if not present, it is implicitly assumed to be 'default'
             if not 'tags' in pkg:
@@ -192,8 +198,11 @@ class BuildManager():
     def __getPackage( self, pkgname, version=None ):
         # Then, we need to find a configuration file for this package
         # that resides on the same directory than this script, in
-        # config/<packagename>/package.json
-        pkgfile = '%s/config/%s/package.json' % (self.thisdir,pkgname)
+        # config/<packagename>/package.{platform}.json
+        if self.platform=="Linux":
+            pkgfile = '%s/config/%s/package.json' % (self.thisdir,pkgname)
+        else:
+            pkgfile = '%s/config/%s/package.%s.json' % (self.thisdir,pkgname,self.platform)
         if not os.path.exists( pkgfile ):
             print "**** ERROR: Package file",pkgfile,"is missing"
             print "            Should be on",pkgfile
@@ -236,7 +245,6 @@ class BuildManager():
                 if key<vskey:
                     # As the configs are sorted in reverse order, the first
                     # one that satisfies this is the lower bound we want
-                    print "Found ",pkgname," version ", item['version']
                     return item
 
         # otherwise, return the first version available if everything was wrong
@@ -266,6 +274,8 @@ class Builder:
         self.pkgname  = pkgname
         self.version  = version
         self.pkg      = buildmgr.getPackage( pkgname, version )
+        if self.version != self.pkg['version']:
+            print "Replacing",pkgname,"version",version,"with",self.pkg['version']
         self.version  = self.pkg['version']
         self.logfile = self.resolve( "{builddir}/{dirname}.log" )
         self.errfile = self.resolve( "{builddir}/{dirname}.err" )
@@ -428,13 +438,17 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument( 'packages', nargs='*' )
     parser.add_argument( '--tags', '-t' )
+    parser.add_argument( '--location', '-l', default='default')
+    parser.add_argument( '--platform', '-p', default=plat.system())
+    parser.add_argument( '--config', '-c', default='~/.bleedingedge.json')
     opt = parser.parse_args()
 
     if len(opt.packages)==0:
         parser.print_help()
+        sys.exit(1)
 
     mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
-    mgr = BuildManager( tags=mytags )
+    mgr = BuildManager( tags=mytags, location=opt.location, config=opt.config )
     for pkg in opt.packages:
         pkgv = pkg.split( '-', 1 )
         mgr.deploy( *pkgv )
