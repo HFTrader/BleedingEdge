@@ -12,6 +12,9 @@ install/
 *.o
 *.obj
 
+# Python compiled files
+*.pyc
+
 # Precompiled Headers
 *.gch
 *.pch
