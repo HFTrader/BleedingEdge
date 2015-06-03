@@ -41,8 +41,29 @@ optional arguments:
 Some examples:
 
 ```
-./pkgbuild --platform=Windows gcc clang    (will use the 'default' tag)
-./pkgbuild --tags=bleeding --location=fxdesk ncurses libelf libtool
+./pkgbuild.py --platform=Windows gcc clang-3.7.0    (will use the 'default' tag)
+./pkgbuild.py --tags=bleeding --location=fxdesk ncurses libelf libtool
+./pkgbuild.py --config=mylocs.json --location=newdesk gcc-5.1.0
+```
+
+Example of location config:
+
+```
+{
+    "default": {
+        "repodir": "/home/jeff/tests/BleedingEdge",
+        "installdir": "/home/jeff/tests/BleedingEdge/install",
+        "builddir": "/home/jeff/tests/BleedingEdge/build",
+        "deploydir": "/home/jeff/tests/BleedingEdge/deploy"
+    },
+    "fxdesk": {
+        "repodir": "/tmp/fxdesk/repo",
+        "installdir": "/tmp/fxdesk/install",
+        "builddir": "/tmp/fxdesk/build",
+        "deploydir": "/mnt/fxdesk/apps"
+    }
+}
+
 ```
 
 The default platform is the one resulting from `platform.system()` on python. On Linux this is "Linux". If the platform is Linux, the package's configuration file will be in `<scriptdir>/config/{pkgname}/packages.json`. If the package is not Linux though then the configuration file is expected to be in `<scriptdir>/config/{pkgname}/packages.{platform}.json`
