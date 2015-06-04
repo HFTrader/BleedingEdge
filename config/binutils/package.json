@@ -1,5 +1,6 @@
 [ {
     "version":   "2.25",
+    "tags": ["latest","default","stable"],
     "url":       "http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"

@@ -1,5 +1,7 @@
 [ {
     "version":   "3.1.2",
+    "tags": ["latest","stable","default"],
+    "depends": ["gmp"],
     "url":       "http://www.mpfr.org/mpfr-current/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --disable-shared --enable-static --prefix={installdir}/{dirname} --with-gmp={installdir}/gmp-6.0.0"

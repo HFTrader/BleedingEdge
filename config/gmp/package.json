@@ -1,5 +1,6 @@
 [ {
     "version":   "6.0.0",
+    "tags": ["latest","stable","default"],
     "url":       "https://gmplib.org/download/gmp/{dirname}.tar.bz2",
     "dirname":   "{name}-{version}",
     "configure": "./configure --with-sysroot=/usr --disable-shared --enable-static --prefix={installdir}/{dirname}"
