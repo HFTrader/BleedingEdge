@@ -1,6 +1,5 @@
 [ {
     "version":   "3.0.4",
-    "tags": ["latest","default","stable"],
     "url":       "http://ftp.gnu.org/gnu/bison/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"

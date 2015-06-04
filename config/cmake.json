@@ -1,6 +1,5 @@
 [ {
     "version":   "3.2.2",
-    "tags": ["latest"],
     "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "depends":   [ "gcc" ],
@@ -8,7 +7,6 @@
 },
  {
     "version":   "2.8.2",
-    "tags": ["default","stable"],
     "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "depends":   [ "gcc" ],

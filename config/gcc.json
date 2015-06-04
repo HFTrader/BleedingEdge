@@ -1,6 +1,5 @@
 [ {
     "version":   "5.1.0",
-    "tags": [ "bleeding","latest" ],
     "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp" ],
     "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
@@ -8,7 +7,6 @@
 },
 {
     "version":   "4.9.2",
-    "tags": [ "stable","default" ],
     "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp" ],
     "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",

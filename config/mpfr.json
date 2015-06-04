@@ -1,6 +1,5 @@
 [ {
     "version":   "3.1.2",
-    "tags": ["latest","stable","default"],
     "depends": ["gmp"],
     "url":       "http://www.mpfr.org/mpfr-current/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",

@@ -1,6 +1,5 @@
 [ {
     "version":   "0.8.13",
-    "tags": ["latest","stable","default"],
     "url":       "http://www.mr511.de/software/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --disable-shared --enable-static --prefix={installdir}/{dirname}"

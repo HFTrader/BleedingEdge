@@ -1,6 +1,5 @@
 [ {
     "version":   "5.2",
-    "tags": ["latest","stable","default"],
     "url":       "http://ftp.gnu.org/gnu/texinfo/$texinfo_version.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"

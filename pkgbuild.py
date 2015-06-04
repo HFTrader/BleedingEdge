@@ -7,6 +7,7 @@ import json
 import shutil
 import copy
 import imp
+import re,fnmatch
 from datetime import datetime
 import argparse
 import platform as plat
@@ -25,16 +26,16 @@ class BuildManager():
                   tags = ['default',],
                   platform=plat.system(),
                   config="~/.bleedingedge.json" ):
-        # you can specify several locations in your ~/.bleedingedge.json file
-        # the default would be just 'default'
-        # used to filter out all configurations that are not tagged with this
-        self.tags = tags
-
         # This is the default platform
         self.platform = platform
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
+
+        # you can specify several locations in your ~/.bleedingedge.json file
+        # the default would be just 'default'
+        # used to filter out all configurations that are not tagged with this
+        self.tags = self.readTags( tags )
 
         # try to open the main config to read where the files will be
         usercfg = os.path.expanduser( config )
@@ -87,7 +88,9 @@ class BuildManager():
         # this gets complicated because some damn packages have a dash on them as apache-maven
         # we need a routine to parse the command-line and generate a package name and version
         cfgdir = os.path.join( self.thisdir, 'config' )
-        pkgnames = [ v for v in os.listdir( cfgdir ) if os.path.isdir( os.path.join(cfgdir,v) ) ]
+        pkgnames = [ v[:-5] for v in os.listdir( cfgdir )
+                     if os.path.isfile( os.path.join(cfgdir,v) )
+                     and v.endswith('.json') ]
         splits = pkgstring.split( '-' )
         for j in range(1,len(splits)+1):
             pkgname = '-'.join(splits[0:j])
@@ -171,14 +174,14 @@ class BuildManager():
     def getBuilder( self, pkgname, version=None ):
         # Retrieve the builder object responsible for this particular
         # package and version. We try first to match a python file like
-        # <this-script-dir>/config/gcc-5.1.0.py for gcc version 5.1.0
+        # <this-script-dir>/gcc-5.1.0.py for gcc version 5.1.0
         # then we try to match
-        # <this-script-dir>/config/gcc.py for gcc (generic)
+        # <this-script-dir>/gcc.py for gcc (generic)
         # if both are not found, returns just the default Builder
         altfiles = []
         if version:
-            altfiles.append( ("%s-%s" % (pkgname,version), "%s/config/%s/%s-%s.py" % (self.thisdir,pkgname,pkgname,version)) )
-        altfiles.append( (pkgname, "%s/config/%s/%s.py" % (self.thisdir,pkgname,pkgname)) )
+            altfiles.append( ("%s-%s" % (pkgname,version), "%s/config/%s-%s.py" % (self.thisdir,pkgname,version)) )
+        altfiles.append( (pkgname, "%s/config/%s.py" % (self.thisdir,pkgname)) )
         for modname,srcfile in altfiles:
             if os.path.isfile( srcfile ):
                 module = imp.load_source( modname, srcfile )
@@ -195,10 +198,6 @@ class BuildManager():
         pkg = self.__getPackage( pkgname, version )
         if pkg is not None:
             pkg = copy.deepcopy( pkg )
-            # tag is not required
-            # if not present, it is implicitly assumed to be 'default'
-            if not 'tags' in pkg:
-                pkg['tags'] = ['default']
             # Version can be different - we might have specified gcc 4.2.8 but
             # the only config available is gcc 5.1.2 which we assume is o.k.
             if (version is not None) and (not 'version' in pkg):
@@ -208,14 +207,41 @@ class BuildManager():
             pkg['name'] = pkgname
         return pkg
 
+    def readTags( self, tags ):
+        # produces a dict of tag => { pkgname => match } for this package
+        ver = {}
+        for tag in tags:
+            fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
+            if not os.path.isfile( fname ):
+                print "Tag",tag,"does not exist!"
+                continue
+            with open(fname,'r') as f:
+                tagmap = json.loads( f.read() )
+            pkgmap = {}
+            for pkgname,verlist in tagmap.iteritems():
+                if isinstance(verlist,str):
+                    verlist = [verlist,]
+                matchstr = '|'.join('(?:{0})'.format(fnmatch.translate(x))
+                                    for x in verlist)
+                pkgmap[pkgname] = re.compile(matchstr)
+            ver[tag] = pkgmap
+        return ver
+
+    def matchTags( self, pkgname, version ):
+        for tag,pkgmap in self.tags.iteritems():
+            rexpr = pkgmap.get(pkgname)
+            if (rexpr is None) or (rexpr.match(version) is None):
+                return False
+        return True
+
     def __getPackage( self, pkgname, version=None ):
         # Then, we need to find a configuration file for this package
         # that resides on the same directory than this script, in
-        # config/<packagename>/package.{platform}.json
+        # config/<packagename>.{platform}.json
         if self.platform=="Linux":
-            pkgfile = '%s/config/%s/package.json' % (self.thisdir,pkgname)
+            pkgfile = '%s/config/%s.json' % (self.thisdir,pkgname)
         else:
-            pkgfile = '%s/config/%s/package.%s.json' % (self.thisdir,pkgname,self.platform)
+            pkgfile = '%s/config/%s.%s.json' % (self.thisdir,pkgname,self.platform)
         if not os.path.exists( pkgfile ):
             print "**** ERROR: Package file",pkgfile,"is missing"
             print "            Should be on",pkgfile
@@ -227,11 +253,10 @@ class BuildManager():
         # if configuration is just a dict, meaning there is only one, return it
         if isinstance( js, dict ):
             # Returns it only if this config's tag matches what we've specified
-            if (self.tags is not None) and ('tags' in js):
-                if not all( [ t in js['tags'] for t in self.tags ] ):
-                    print "Could not find a valid configuration with tags:"
-                    print '    ', ','.join(self.tags)
-                    return None
+            if self.matchTags( pkgname, js['version'] ):
+                print "Could not find a valid configuration with tags:"
+                print '    ', ','.join(self.tags)
+                return None
             return js
 
         # pick the version that best approximates AND has our tag (if any)
@@ -240,9 +265,8 @@ class BuildManager():
         allvs = []
         for item in js:
             # pass if this config does not have our tag
-            if (self.tags is not None) and ('tags' in item):
-                if not all( [ t in item['tags'] for t in self.tags ] ):
-                    continue
+            if not self.matchTags( pkgname, item['version'] ):
+                continue
             # check if we have a perfect match
             vs = item['version']
             if (version is not None) and (vs==version):

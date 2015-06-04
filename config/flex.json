@@ -1,6 +1,5 @@
 [ {
     "version":   "2.5.39",
-    "tags": ["latest","stable","default"],
     "url":       "http://downloads.sourceforge.net/project/flex/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"

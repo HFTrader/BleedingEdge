@@ -1,6 +1,5 @@
 [ {
     "version":   "3.6.1",
-    "tags": ["latest","default","stable"],
     "depends": [ "cmake" ],
     "url":   "http://llvm.org/releases/{version}",
     "dirname":   "{name}-{version}",
