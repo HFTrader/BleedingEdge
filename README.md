@@ -44,6 +44,7 @@ Some examples:
 ./pkgbuild.py --platform=Windows gcc clang-3.7.0    (will use the 'default' tag)
 ./pkgbuild.py --tags=bleeding --location=fxdesk ncurses libelf libtool
 ./pkgbuild.py --config=mylocs.json --location=newdesk gcc-5.1.0
+./pkgbuild.py --tags=latest all  (builds every single package on tag latest)
 ```
 
 Example of location config:

@@ -94,10 +94,7 @@ class BuildManager():
     def parse( self, pkgstring ):
         # this gets complicated because some damn packages have a dash on them as apache-maven
         # we need a routine to parse the command-line and generate a package name and version
-        cfgdir = os.path.join( self.thisdir, 'config' )
-        pkgnames = [ v[:-5] for v in os.listdir( cfgdir )
-                     if os.path.isfile( os.path.join(cfgdir,v) )
-                     and v.endswith('.json') ]
+        pkgnames = self.getAllPackages()
         splits = pkgstring.split( '-' )
         for j in range(1,len(splits)+1):
             pkgname = '-'.join(splits[0:j])
@@ -170,6 +167,12 @@ class BuildManager():
         # update this package's status
         self.updateStatus( pkgname, bld.version, ok )
         return ok
+
+    def getAllPackages( self ):
+        cfgdir = os.path.join( self.thisdir, 'config' )
+        return [ v[:-5] for v in os.listdir( cfgdir )
+                    if os.path.isfile( os.path.join(cfgdir,v) )
+                    and v.endswith('.json') ]
 
     def getDependencies( self, pkgname, version=None ):
         # Simply return the 'depends' field in the config file
@@ -525,6 +528,9 @@ if __name__=="__main__":
         print mgr.dumpEnvironment()
         sys.exit(0)
 
+    if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
+        opt.packages = mgr.getAllPackages()
+
     for pkg in opt.packages:
         # things get dicy for cases like apache-maven-3.3.3
         # (pkgname,version) = (apache,maven-3.3.3) or (apache-maven,3.3.3)?
@@ -532,4 +538,5 @@ if __name__=="__main__":
         if pkgname is None:
             print "Package string",pkg,"does not match any in database"
         else:
-            mgr.deploy( pkgname, version )
+            if not mgr.deploy( pkgname, version ):
+                break

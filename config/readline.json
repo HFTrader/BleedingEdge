@@ -1,6 +1,7 @@
 [ {
-    "version":   "1.2.8",
-    "url":       "http://zlib.net/{name}-{version}.tar.gz",
+    "version":   "6.3",
+    "depends":   ["ncurses"],
+    "url":       "ftp://ftp.gnu.org/gnu/readline/readline-{version}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./configure --prefix={installdir}/{dirname} --with-curses={deploydir}"
 } ]
