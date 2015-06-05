@@ -1,0 +1,6 @@
+[ {
+    "version":   "1.5.4",
+    "url":       "http://apache.spinellicreations.com//apr/apr-util-{version}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname} --with-apr={deploydir}"
+} ]
