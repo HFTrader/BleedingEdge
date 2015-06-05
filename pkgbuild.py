@@ -91,10 +91,12 @@ class BuildManager():
         pkgnames = [ v[:-5] for v in os.listdir( cfgdir )
                      if os.path.isfile( os.path.join(cfgdir,v) )
                      and v.endswith('.json') ]
+        print pkgnames
         splits = pkgstring.split( '-' )
         for j in range(1,len(splits)+1):
             pkgname = '-'.join(splits[0:j])
-            version = '-'.join(splits[j:-1])
+            version = '-'.join(splits[j:])
+            print "Trying to match pkgname[%s] version [%s]" % (pkgname,version)
             if pkgname in pkgnames:
                 return (pkgname,version)
         return None,None
@@ -118,6 +120,8 @@ class BuildManager():
         return os.path.isfile( fname )
 
     def deploy( self, pkgname, version=None ):
+        print "Requested deploy package [%s] version [%s]" % (pkgname,version)
+
         # Executes all steps to retrieve this package, compile and install in
         # its final destination.
         # First, attempt to check if there are any dependencies. If so, attempt
@@ -142,6 +146,7 @@ class BuildManager():
         # package's installation procedures.
         # TODO Perhaps we should add a completion test for the configure(), make(),
         # install() and deploy() steps in the same way we do with checkout()
+        print "Searching for builder for package [%s] version [%s]" %(pkgname,version)
         bld = self.getBuilder( pkgname, version )
 
         # Check if this package is already deployed
@@ -183,7 +188,9 @@ class BuildManager():
             altfiles.append( ("%s-%s" % (pkgname,version), "%s/config/%s-%s.py" % (self.thisdir,pkgname,version)) )
         altfiles.append( (pkgname, "%s/config/%s.py" % (self.thisdir,pkgname)) )
         for modname,srcfile in altfiles:
+            print "Searching for module",modname,"on file",srcfile
             if os.path.isfile( srcfile ):
+                print "  --> found"
                 module = imp.load_source( modname, srcfile )
                 bld = module.CustomBuilder( self, pkgname, version )
                 return bld
@@ -206,33 +213,6 @@ class BuildManager():
             # location so we just add it here for consistency.
             pkg['name'] = pkgname
         return pkg
-
-    def readTags( self, tags ):
-        # produces a dict of tag => { pkgname => match } for this package
-        ver = {}
-        for tag in tags:
-            fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
-            if not os.path.isfile( fname ):
-                print "Tag",tag,"does not exist!"
-                continue
-            with open(fname,'r') as f:
-                tagmap = json.loads( f.read() )
-            pkgmap = {}
-            for pkgname,verlist in tagmap.iteritems():
-                if isinstance(verlist,str):
-                    verlist = [verlist,]
-                matchstr = '|'.join('(?:{0})'.format(fnmatch.translate(x))
-                                    for x in verlist)
-                pkgmap[pkgname] = re.compile(matchstr)
-            ver[tag] = pkgmap
-        return ver
-
-    def matchTags( self, pkgname, version ):
-        for tag,pkgmap in self.tags.iteritems():
-            rexpr = pkgmap.get(pkgname)
-            if (rexpr is None) or (rexpr.match(version) is None):
-                return False
-        return True
 
     def __getPackage( self, pkgname, version=None ):
         # Then, we need to find a configuration file for this package
@@ -286,6 +266,37 @@ class BuildManager():
 
         # otherwise, return the first version available if everything was wrong
         return js[0]
+
+    def readTags( self, tags ):
+        # produces a dict of tag => { pkgname => match } for this package
+        ver = {}
+        for tag in tags:
+            fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
+            if not os.path.isfile( fname ):
+                print "Tag",tag,"does not exist!"
+                continue
+            try:
+                with open(fname,'r') as f:
+                    tagmap = json.loads( f.read() )
+            except Exception, e:
+                print "Tag file",fname," Exception",e
+                return None
+            pkgmap = {}
+            for pkgname,verlist in tagmap.iteritems():
+                if isinstance(verlist,str):
+                    verlist = [verlist,]
+                matchstr = '|'.join('(?:{0})'.format(fnmatch.translate(x))
+                                    for x in verlist)
+                pkgmap[pkgname] = re.compile(matchstr)
+            ver[tag] = pkgmap
+        return ver
+
+    def matchTags( self, pkgname, version ):
+        for tag,pkgmap in self.tags.iteritems():
+            rexpr = pkgmap.get(pkgname)
+            if (rexpr is None) or (rexpr.match(version) is None):
+                return False
+        return True
 
     def resolve( self, newval, pkg=None ):
         # Substitutes all {} until there is no more changes
@@ -474,7 +485,7 @@ class Builder:
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument( 'packages', nargs='*' )
-    parser.add_argument( '--tags', '-t' )
+    parser.add_argument( '--tags', '-t', default='default' )
     parser.add_argument( '--location', '-l', default='default')
     parser.add_argument( '--platform', '-p', default=plat.system())
     parser.add_argument( '--config', '-c', default='~/.bleedingedge.json')
