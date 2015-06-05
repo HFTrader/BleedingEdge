@@ -84,6 +84,13 @@ class BuildManager():
                     print >> sys.stderr, "Error: path exists but is not", \
                         "a directory:", dname
 
+    def dumpEnvironment( self ):
+        cmd = """
+        export PATH=$PATH:{deploydir}/bin
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{deploydir}/lib
+        """
+        return self.resolve( cmd )
+
     def parse( self, pkgstring ):
         # this gets complicated because some damn packages have a dash on them as apache-maven
         # we need a routine to parse the command-line and generate a package name and version
@@ -91,12 +98,10 @@ class BuildManager():
         pkgnames = [ v[:-5] for v in os.listdir( cfgdir )
                      if os.path.isfile( os.path.join(cfgdir,v) )
                      and v.endswith('.json') ]
-        print pkgnames
         splits = pkgstring.split( '-' )
         for j in range(1,len(splits)+1):
             pkgname = '-'.join(splits[0:j])
             version = '-'.join(splits[j:])
-            print "Trying to match pkgname[%s] version [%s]" % (pkgname,version)
             if pkgname in pkgnames:
                 return (pkgname,version)
         return None,None
@@ -226,8 +231,12 @@ class BuildManager():
             print "**** ERROR: Package file",pkgfile,"is missing"
             print "            Should be on",pkgfile
             return None
-        with open( pkgfile, "rb" ) as f:
-            js = json.loads( f.read() )
+        try:
+            with open( pkgfile, "rb" ) as f:
+                js = json.loads( f.read() )
+        except Exception, e:
+            print "Exception while reading from file",pkgfile,":", e
+            return None
 
         # The file can be a list of configurations or just one
         # if configuration is just a dict, meaning there is only one, return it
@@ -378,6 +387,10 @@ class Builder:
                 self.pkg['ext'] = self.filetype( url )
             pkgfile = self.resolve( "{builddir}/{name}-{version}.{ext}" )
             self.pkg['pkgfile'] = pkgfile
+        fullpath = self.resolve( '{builddir}/{dirname}' )
+        if os.path.exists( fullpath ):
+            print "Removing existing path", fullpath
+            shutil.rmtree( fullpath )
         if url.startswith( 'svn:' ):
             cmd = "cd {builddir} && svn co {url} {dirname}"
             status = self.runcmd( cmd )
@@ -393,7 +406,6 @@ class Builder:
             if not dirname:
                 dirname = '{name}-{version}'
                 self.pkg['dirname'] = dirname
-            fullpath = self.resolve( '{builddir}/{dirname}' )
             return self.extract( pkgfile, fullpath )
 
     def extract( self, pkgfile, fullpath ):
@@ -408,13 +420,13 @@ class Builder:
             self.errf.write( "Could not identify a valid extension in [%s] for extraction" % (pkgfile,) )
             return False
         if ext=='tar.gz':
-            cmd = 'cd {builddir}; tar xzvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xzvf {pkgfile}'
         elif ext=='tar.xz':
-            cmd = 'cd {builddir}; tar xJvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xJvf {pkgfile}'
         elif ext=='tar.bz2':
-            cmd = 'cd {builddir}; tar xjvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xjvf {pkgfile}'
         elif ext=='zip':
-            cmd = 'mkdir -p {builddir}/{name}-{version}; cd {builddir}/{name}.{version}/; unzip {pkgfile}'
+            cmd = 'mkdir -p {builddir}/{name}-{version} && cd {builddir}/{name}.{version}/ && unzip {pkgfile}'
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status", status
@@ -442,7 +454,7 @@ class Builder:
         # This step can also be used to apply patches, if any
         cmd = self.pkg.get('configure') or \
           "./configure --prefix={installdir}/{dirname}"
-        cmd = "cd {builddir}/{dirname}; " + cmd
+        cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
@@ -455,7 +467,7 @@ class Builder:
         # Otherwise go with just 'make'
         cmd = self.pkg.get('make') or \
           "make -j4"
-        cmd = "cd {builddir}/{dirname}; " + cmd
+        cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
@@ -469,7 +481,7 @@ class Builder:
         # of the packages out there
         cmd = self.pkg.get('install') or \
           "make install"
-        cmd = "cd {builddir}/{dirname}; " + cmd
+        cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
@@ -483,7 +495,7 @@ class Builder:
         # into {deploydir} so everything stays in the same place
         cmd = self.pkg.get('deploy') or \
           "rsync -av {installdir}/{dirname}/ {deploydir}/"
-        cmd = "cd {builddir}/{dirname}; " + cmd
+        cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
@@ -498,14 +510,20 @@ if __name__=="__main__":
     parser.add_argument( '--location', '-l', default='default')
     parser.add_argument( '--platform', '-p', default=plat.system())
     parser.add_argument( '--config', '-c', default='~/.bleedingedge.json')
+    parser.add_argument( '--dump-environ', '-e', dest='dumpenv',
+                         action='store_true', default=False )
     opt = parser.parse_args()
 
-    if len(opt.packages)==0:
+    if len(opt.packages)==0 and (not opt.dumpenv):
         parser.print_help()
         sys.exit(1)
 
     mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
     mgr = BuildManager( tags=mytags, location=opt.location, config=opt.config )
+
+    if opt.dumpenv:
+        print mgr.dumpEnvironment()
+        sys.exit(0)
 
     for pkg in opt.packages:
         # things get dicy for cases like apache-maven-3.3.3

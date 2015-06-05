@@ -1,0 +1,6 @@
+[ {
+    "version":   "3.8.10.2",
+    "url":       "https://www.sqlite.org/2015/sqlite-autoconf-3081002.tar.gz",
+    "dirname":   "{name}-autoconf-3081002",
+    "configure": "./configure --prefix={installdir}/{dirname}"
+} ]

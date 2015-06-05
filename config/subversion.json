@@ -1,0 +1,7 @@
+[ {
+    "version":   "1.8.13",
+    "depends": ["apr","apr-util","sqlite"],
+    "url":       "http://mirrors.koehn.com/apache/subversion/subversion-{version}.tar.bz2",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname} --with-apr={deploydir} --with-sqlite={deploydir}"
+} ]
