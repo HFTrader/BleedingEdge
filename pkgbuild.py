@@ -378,14 +378,23 @@ class Builder:
                 self.pkg['ext'] = self.filetype( url )
             pkgfile = self.resolve( "{builddir}/{name}-{version}.{ext}" )
             self.pkg['pkgfile'] = pkgfile
-        if not self.download( url, pkgfile ):
-            return False
-        dirname = self.pkg.get('dirname')
-        if not dirname:
-            dirname = '{name}-{version}'
-            self.pkg['dirname'] = dirname
-        fullpath = self.resolve( '{builddir}/{dirname}' )
-        return self.extract( pkgfile, fullpath )
+        if url.startswith( 'svn:' ):
+            cmd = "cd {builddir} && svn co {url} {dirname}"
+            status = self.runcmd( cmd )
+            return status==0
+        elif url.startswith( 'git:' ):
+            cmd = "cd {builddir} && git clone {url} {dirname}"
+            status = self.runcmd( cmd )
+            return status==0
+        else:
+            if not self.download( url, pkgfile ):
+                return False
+            dirname = self.pkg.get('dirname')
+            if not dirname:
+                dirname = '{name}-{version}'
+                self.pkg['dirname'] = dirname
+            fullpath = self.resolve( '{builddir}/{dirname}' )
+            return self.extract( pkgfile, fullpath )
 
     def extract( self, pkgfile, fullpath ):
         # extracts the file (name) passed into the canonical directory

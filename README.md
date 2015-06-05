@@ -95,7 +95,7 @@ Here is a description of the fields that are supported in the configuration.
 
 - tags: a list of strings (tags) associated with this particular configuration
 
-- url: Where to download the tarball from. You would usually use the key {dirname}. it is okay to put the version number explicitly here but beware that if say, user asks for binutils version 2.27 and the last available is 2.25, the 2.25 config will be used. In this case, if the URL is specified as `ftp.gnu.org/gnu/binutils/binutils-2.25.tar.gz` then we will not be able to pick up the 2.27 version from the ftp site. You will have to create another entry in the config, which is not ideal. So please use the {dirname} key.
+- url: Where to download the tarball from. This can be any protocol that is supported by python.urllib2 plus svn: and git: prefixes for bleeding edge. You would usually use the key {dirname}. it is okay to put the version number explicitly here but beware that if say, user asks for binutils version 2.27 and the last available is 2.25, the 2.25 config will be used. In this case, if the URL is specified as `ftp.gnu.org/gnu/binutils/binutils-2.25.tar.gz` then we will not be able to pick up the 2.27 version from the ftp site. You will have to create another entry in the config, which is not ideal. So please use the {dirname} key.
 
 - dirname: the name of this key is not intuitive but I could not find a better one. It is the name of the directory under config (and under build) that will hold configs and the build, respectively. Examples are `binutils-2.25` and `gcc-5.0.1`. The configuration directory, for example, will be `<yourscriptdir>/config/gcc-5.0.1/`. I've added the default to all the configs so far just to make it explicit.
 
@@ -115,11 +115,11 @@ The algorithm that I came up to normalize version numbers is very simple - I spl
 
 Once a configuration is found, the manager will try to find a specialized builder for that package and version. Right now there is clang.py only. This is in the case that we come across some crazy package that needs special treatment. The custom builder would be in
 
-`    <scriptdir>/config/<pkgname>/<pkgname>-<version>.py `
+`    <scriptdir>/config/<pkgname>-<version>.py `
 
 or
 
-`    <scriptdir>/config/<pkgname>/<pkgname>.py `
+`    <scriptdir>/config/<pkgname>.py `
 
 This specialized python script should contain one class called 'CustomBuilder', which will be instantiated. It needs to contain the same methods that in the Builder original.  `clang` has a messy hierarchy structure so it required a custom builder in config/clang.py that overrides the checkout() call. Use it as an example.
 
