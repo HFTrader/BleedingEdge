@@ -196,9 +196,7 @@ class BuildManager():
             altfiles.append( ("%s-%s" % (pkgname,version), "%s/config/%s-%s.py" % (self.thisdir,pkgname,version)) )
         altfiles.append( (pkgname, "%s/config/%s.py" % (self.thisdir,pkgname)) )
         for modname,srcfile in altfiles:
-            print "Searching for module",modname,"on file",srcfile
             if os.path.isfile( srcfile ):
-                print "  --> found"
                 module = imp.load_source( modname, srcfile )
                 bld = module.CustomBuilder( self, pkgname, version )
                 return bld
