@@ -1,0 +1,9 @@
+[ {
+    "version":   "git",
+    "url":       "https://github.com/xianyi/OpenBLAS.git",
+    "depends":   ["gcc"],
+    "dirname":   "{name}-{version}",
+    "configure": "echo done",
+    "make": "make -j4",
+    "install": "make install PREFIX={installdir}/{dirname}"
+} ]

@@ -1,0 +1,6 @@
+[ {
+    "version":   "git",
+    "url":       "git://git.gnome.org/libxml2",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname}"
+} ]

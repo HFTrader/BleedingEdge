@@ -396,7 +396,7 @@ class Builder:
             cmd = "cd {builddir} && svn co {url} {dirname}"
             status = self.runcmd( cmd )
             return status==0
-        elif url.startswith( 'git:' ):
+        elif url.endswith( '.git' ) or url.startswith( 'git:' ):
             cmd = "cd {builddir} && git clone {url} {dirname}"
             status = self.runcmd( cmd )
             return status==0
@@ -449,6 +449,11 @@ class Builder:
         self.errf.flush()
         return status
 
+    def tail( self, filename ):
+        with open( filename, 'r' ) as f:
+            print "\n>>>>> ", filename, "\n"
+            print '\n'.join( f.read().split( '/n' )[-30:] )
+
     def configure( self ):
         # Try to get the configure command from package configuration
         # This is usually the commnand that changes most frequently
@@ -459,7 +464,8 @@ class Builder:
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
-            print "Check log files",self.logfile,"and",self.errfile
+            self.tail( self.logfile )
+            self.tail( self.errfile )
             return False
         return True
 
@@ -472,7 +478,8 @@ class Builder:
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
-            print "Check log files",self.logfile,"and",self.errfile
+            self.tail( self.logfile )
+            self.tail( self.errfile )
             return False
         return True
 
@@ -525,6 +532,15 @@ if __name__=="__main__":
     if opt.dumpenv:
         print mgr.dumpEnvironment()
         sys.exit(0)
+
+    # substitute PATH and LD_LIBRARY_PATH to use our librareis by default
+    os.environ['PATH'] = ":".join( ( mgr.resolve( "{deploydir}/bin" ),
+                                     mgr.resolve( "{deploydir}/x86_64-unknown-linux-gnu/bin" ),
+                                     os.environ['PATH'] ) )
+    os.environ['LD_LIBRARY_PATH'] = ":".join( ( mgr.resolve( "{deploydir}/lib" ),
+                                                mgr.resolve( "{deploydir}/lib64" ),
+                                                mgr.resolve( "{deploydir}/x86_64_-unknown-linux-gnu/lib" ),
+                                                os.environ['LD_LIBRARY_PATH'] ) )
 
     if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
         opt.packages = mgr.getAllPackages()
