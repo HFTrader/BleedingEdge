@@ -536,11 +536,11 @@ if __name__=="__main__":
     # substitute PATH and LD_LIBRARY_PATH to use our librareis by default
     os.environ['PATH'] = ":".join( ( mgr.resolve( "{deploydir}/bin" ),
                                      mgr.resolve( "{deploydir}/x86_64-unknown-linux-gnu/bin" ),
-                                     os.environ['PATH'] ) )
+                                     os.environ.get('PATH','') ) )
     os.environ['LD_LIBRARY_PATH'] = ":".join( ( mgr.resolve( "{deploydir}/lib" ),
                                                 mgr.resolve( "{deploydir}/lib64" ),
                                                 mgr.resolve( "{deploydir}/x86_64_-unknown-linux-gnu/lib" ),
-                                                os.environ['LD_LIBRARY_PATH'] ) )
+                                                os.environ.get('LD_LIBRARY_PATH','') ) )
 
     if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
         opt.packages = mgr.getAllPackages()
