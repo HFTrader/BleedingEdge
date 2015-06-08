@@ -437,22 +437,25 @@ class Builder:
         # Run a system command, funneling stdout and stderr to the respective
         # configuration logs
         cmd = self.resolve( cmd )
+        print "Exec:", cmd
+        pc = subprocess.Popen( cmd,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               shell=True )
+        try:
+            out,err = pc.communicate()
+        except Exception, e:
+            print "Exception running", cmd, ":", e
+        if pc.returncode != 0:
+            print '\n'.join( err.split('\n')[-30:] )
         logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
         self.logf.write( logstr )
+        self.logf.write( out )
         self.logf.flush()
         self.errf.write( logstr )
+        self.errf.write( err )
         self.errf.flush()
-        print "Exec:", cmd
-        status = subprocess.call( cmd, stdout=self.logf, stderr=self.errf,
-                                  shell=True )
-        self.logf.flush()
-        self.errf.flush()
-        return status
-
-    def tail( self, filename ):
-        with open( filename, 'r' ) as f:
-            print "\n>>>>> ", filename, "\n"
-            print '\n'.join( f.read().split( '/n' )[-30:] )
+        return pc.returncode
 
     def configure( self ):
         # Try to get the configure command from package configuration
@@ -464,8 +467,6 @@ class Builder:
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
-            self.tail( self.logfile )
-            self.tail( self.errfile )
             return False
         return True
 
@@ -478,8 +479,6 @@ class Builder:
         status = self.runcmd( cmd )
         if status!=0:
             print "Command failed with status %d" % (status)
-            self.tail( self.logfile )
-            self.tail( self.errfile )
             return False
         return True
 
