@@ -2,5 +2,5 @@
     "version":   "0.8.13",
     "url":       "http://www.mr511.de/software/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --disable-shared --enable-static --prefix={installdir}/{dirname}"
+    "configure": "./configure --disable-static --prefix={installdir}/{dirname}"
 } ]

@@ -1,0 +1,7 @@
+[ {
+    "version":   "git",
+    "depends": [ "isl" ],
+    "url":       "git://repo.or.cz/cloog.git",
+    "dirname":   "{name}-{version}",
+    "configure": "git submodule init && git submodule update && ./autogen.sh && ./configure --prefix={installdir}/{dirname} --with-isl-prefix={deploydir} --with-gmp-prefix={deploydir}"
+} ]

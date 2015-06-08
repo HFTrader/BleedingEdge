@@ -4,7 +4,7 @@
     "depends":   [ "armadillo","cmake","libxml2","boost" ],
     "dirname":   "{name}-{version}",
     "configure": "mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX:PATH={installdir}/{dirname} -DDEBUG=OFF -DPROFILE=OFF -DARMADILLO_INCLUDE_DIR:PATH={deploydir}/include -DARMADILLO_LIBRARY:PATH={deploydir}/lib/libarmadillo.so -DCMAKE_BUILD_TYPE=release ..",
-    "make": "cd build && make -j4",
+    "make": "cd build && make -j",
     "install": "cd build && make install"
 },
 {
@@ -12,6 +12,6 @@
     "url":       "http://www.mlpack.org/files/mlpack-{version}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release ..",
-    "make": "cd build && make -j4 ",
+    "make": "cd build && make -j ",
     "install": "cd build && make install"
 } ]

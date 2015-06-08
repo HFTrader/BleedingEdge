@@ -28,6 +28,7 @@ class BuildManager():
                   config="~/.bleedingedge.json" ):
         # This is the default platform
         self.platform = platform
+        self.versions = {}
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
@@ -73,10 +74,11 @@ class BuildManager():
         # build default directories
         for dname in (self.repodir,self.builddir,self.installdir, self.deploydir):
             try:
-                os.makedirs( dname )
-                print "Created directory", dname
+                if not os.path.exists( dname ):
+                    os.makedirs( dname )
+                    print "Created directory", dname
             except Exception, e:
-                pass
+                print "Exception while creating", dname, ": ", e
             if not os.path.exists( dname ):
                 print >> sys.stderr, "Error: could not create ", dname
             else:
@@ -133,7 +135,9 @@ class BuildManager():
         if version is None:
             version = pkg.get('version')
             print "Package",pkgname,"version not provided, found:", version
-
+        else:
+            print "Package",pkgname,"version:", version, " found:", pkg.get('version')
+        self.versions[pkgname+'-version'] = pkg.get('version')
         for deps in self.getDependencies( pkgname, version ):
             if isinstance(deps,list):
                 depname,depver = deps
@@ -266,13 +270,12 @@ class BuildManager():
             allvs.append( (key,item) )
 
         # try to find one version whose key is equal or greater the spec
-        if version:
-            vskey = [ '%-5s' % v for v in version.split('.') ]
-            for key,item in sorted( allvs, key=lambda x: x[0], reverse=True ):
-                if key<vskey:
-                    # As the configs are sorted in reverse order, the first
-                    # one that satisfies this is the lower bound we want
-                    return item
+        vskey = [ '%-5s' % v for v in version.split('.') ] if version else None
+        for key,item in sorted( allvs, key=lambda x: x[0], reverse=True ):
+            if (not version) or (key<vskey):
+                # As the configs are sorted in reverse order, the first
+                # one that satisfies this is the lower bound we want
+                return item
 
         # otherwise, return the first version available if everything was wrong
         return js[0]
@@ -293,8 +296,8 @@ class BuildManager():
                 return None
             pkgmap = {}
             for pkgname,verlist in tagmap.iteritems():
-                if isinstance(verlist,str):
-                    verlist = [verlist,]
+                if isinstance(verlist,basestring):
+                    verlist = (verlist,)
                 matchstr = '|'.join('(?:{0})'.format(fnmatch.translate(x))
                                     for x in verlist)
                 pkgmap[pkgname] = re.compile(matchstr)
@@ -314,6 +317,8 @@ class BuildManager():
         # manager's __dict__ (its fields) and the builder's package from config
         mdict = {}
         mdict.update( self.__dict__ )
+        #print "Versions:", self.versions
+        mdict.update( self.versions )
         if pkg:
             mdict.update( pkg )
         value = None
@@ -337,8 +342,6 @@ class Builder:
         self.version  = self.pkg['version']
         self.logfile = self.resolve( "{builddir}/{dirname}.log" )
         self.errfile = self.resolve( "{builddir}/{dirname}.err" )
-        self.logf = open( self.logfile,'a+')
-        self.errf = open( self.errfile,'a+')
 
     def filetype( self, filename ):
         # Canonicalize the type of compression/zippping mechanism from a file name
@@ -380,7 +383,8 @@ class Builder:
         # Perhaps we could augment this to include svn/git like from github?
         url = self.resolve( self.pkg['url'] )
         if not url:
-            self.errf.write( "Configuration missign [url]" )
+            with open( self.errfile, 'a+' ) as errf:
+                errf.write( "Configuration missign [url]" )
             return False
         pkgfile = self.pkg.get('pkgfile')
         if not pkgfile:
@@ -418,7 +422,8 @@ class Builder:
             shutil.rmtree( fullpath )
         ext = self.pkg.get('ext') or self.filetype( pkgfile )
         if not ext:
-            self.errf.write( "Could not identify a valid extension in [%s] for extraction" % (pkgfile,) )
+            with open( self.errfile, 'a+' ) as errf:
+                errf.write( "Could not identify a valid extension in [%s] for extraction" % (pkgfile,) )
             return False
         if ext=='tar.gz':
             cmd = 'cd {builddir} && tar xzvf {pkgfile}'
@@ -449,12 +454,14 @@ class Builder:
         if pc.returncode != 0:
             print '\n'.join( err.split('\n')[-30:] )
         logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
-        self.logf.write( logstr )
-        self.logf.write( out )
-        self.logf.flush()
-        self.errf.write( logstr )
-        self.errf.write( err )
-        self.errf.flush()
+        with open( self.logfile, 'a+' ) as logf:
+            logf.write( logstr )
+            logf.write( out )
+            logf.flush()
+        with open( self.errfile, 'a+' ) as errf:
+            errf.write( logstr )
+            errf.write( err )
+            errf.flush()
         return pc.returncode
 
     def configure( self ):
@@ -474,7 +481,7 @@ class Builder:
         # Try to get the make command from package configuration
         # Otherwise go with just 'make'
         cmd = self.pkg.get('make') or \
-          "make -j4"
+          "make -j "
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:

@@ -2,5 +2,5 @@
     "version":   "2.25",
     "url":       "http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./configure --prefix={installdir}/{dirname} --with-sysroot={deploydir}"
 } ]

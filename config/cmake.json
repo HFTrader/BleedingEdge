@@ -3,12 +3,12 @@
     "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "depends":   [ "gcc" ],
-    "configure": "CXX={deploydir}/bin/g++ CC={deploydir}/bin/gcc ./configure --prefix={installdir}/{dirname}"
+    "configure": "CXX={deploydir}/bin/g++-{gcc-version} CC={deploydir}/bin/gcc-{gcc-version} ./configure --prefix={installdir}/{dirname}"
 },
  {
     "version":   "2.8.2",
     "url":       "http://www.cmake.org/files/v3.2/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "depends":   [ "gcc" ],
-    "configure": "CXX={deploydir}/bin/g++ CC={deploydir}/bin/gcc ./configure --prefix={installdir}/{dirname}"
+    "configure": "CXX={deploydir}/bin/g++-{gcc-version} CC={deploydir}/bin/gcc-{gcc.version} ./configure --prefix={installdir}/{dirname}"
 } ]

@@ -1,0 +1,6 @@
+[ {
+    "version":   "2.0.8",
+    "url":       "ftp://ftp.gnu.org/gnu/shtool/shtool-{version}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname}"
+} ]

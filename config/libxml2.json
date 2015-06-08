@@ -2,5 +2,5 @@
     "version":   "git",
     "url":       "git://git.gnome.org/libxml2",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
+    "configure": "./autogen.sh && ./configure --prefix={installdir}/{dirname} --with-python-install-dir={installdir}/{dirname}"
 } ]

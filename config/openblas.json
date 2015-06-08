@@ -4,6 +4,6 @@
     "depends":   ["gcc"],
     "dirname":   "{name}-{version}",
     "configure": "echo done",
-    "make": "make -j4",
+    "make": "make -j",
     "install": "make install PREFIX={installdir}/{dirname}"
 } ]
