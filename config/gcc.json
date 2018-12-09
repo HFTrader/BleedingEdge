@@ -1,21 +1,21 @@
 [
 {
     "version":   "svn",
-    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp","ppl","cloog","subversion" ],
+    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp","ppl","cloog","subversion","isl" ],
     "url":       "svn://gcc.gnu.org/svn/gcc/trunk",
     "dirname":   "{name}-{version}",
     "configure": "LDFLAGS=\"-L{deploydir}/lib\" CFLAGS=\"-O3 -I{deploydir}/include\" CPPFLAGS=\"-O3 -I{deploydir}/include\" ./configure --prefix={installdir}/{dirname} --enable-languages=c,c++,fortran --enable-threads=posix --enable-tls --enable-libgomp  --enable-lto  --disable-nls --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap  --with-fpmath=sse --program-suffix=-{version} --enable-cloog-backend=isl --with-ppl={deploydir} --with-cloog={deploydir} --enable-__cxa_atexit --with-long-double-128 --enable-secureplt --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir} --with-mpfr={deploydir} --with-mpc={deploydir} --with-isl={deploydir}"
 },
 {
     "version":   "5.1.0",
-    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp", "ppl", "cloog" ],
+    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp", "ppl", "cloog", "isl" ],
     "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "LDFLAGS=\"-L{deploydir}/lib\" CFLAGS=\"-O3 -I{deploydir}/include\" CPPFLAGS=\"-O3 -I{deploydir}/include\" ./configure --prefix={installdir}/{dirname} --enable-languages=c,c++,fortran --enable-threads=posix --enable-tls --enable-libgomp  --enable-lto  --disable-nls --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap  --with-fpmath=sse --program-suffix=-{version} --enable-cloog-backend=isl --with-ppl={deploydir} --with-cloog={deploydir} --enable-__cxa_atexit --with-long-double-128 --enable-secureplt --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir} --with-mpfr={deploydir} --with-mpc={deploydir} --with-isl={deploydir}"
 },
 {
     "version":   "4.9.2",
-    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp" ],
+    "depends": [ "binutils","libelf", "libtool", "mpc", "mpfr", "gmp", "isl" ],
     "url":       "ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "LDFLAGS=\"-L{deploydir}/lib\" CFLAGS=\"-O2 -I{deploydir}/include\" CPPFLAGS=\"-O2 -I{deploydir}/include\" ./configure --prefix={installdir}/{dirname} --enable-languages=c,c++,fortran --enable-threads=posix --enable-tls  --enable-libgomp  --enable-lto  --disable-nls --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap  --with-fpmath=sse --enable-__cxa_atexit --with-long-double-128 --enable-secureplt --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir} --with-mpfr={deploydir} --with-mpc={deploydir}"

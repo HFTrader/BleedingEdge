@@ -1,6 +1,8 @@
 [ {
-    "version":   "1.1",
-    "url":       "http://bugseng.com/external/ppl/download/ftp/releases/LATEST/ppl-{version}.tar.gz",
+    "version":   "1.2",
+    "depends": ["gmp"],
+    "url":       "http://bugseng.com/external/ppl/download/ftp/releases/{version}/ppl-{version}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}"
+    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}",
+    "make": "make -j2"
 } ]

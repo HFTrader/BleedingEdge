@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 import urllib2
+import shutil
 import json
 import shutil
 import copy
@@ -11,6 +12,7 @@ import re,fnmatch
 from datetime import datetime
 import argparse
 import platform as plat
+import multiprocessing
 
 def nowstr():
     # Helper to provide timestamp for logging. It's in local time
@@ -53,6 +55,7 @@ class BuildManager():
             self.builddir = setjs.get('builddir') or "%s/%s" % (self.repodir,'build')
             self.installdir = setjs.get('installdir') or "%s/%s" % (self.repodir,'install')
             self.deploydir  = setjs.get('deploydir')  or "%s/%s" % (self.repodir,'deploy')
+            self.tmpdir     = setjs.get('tmpdir') or "%s/%s" % (self.repodir,'tmp')
         else:
             # this is a new system - set the defaults to the directory that
             # contains this script
@@ -60,6 +63,8 @@ class BuildManager():
             self.builddir =  "%s/build" % (self.repodir,)
             self.installdir = "%s/install" % (self.repodir,)
             self.deploydir  = "%s/deploy" % (self.repodir,)
+            self.tmpdir     = "%s/tmp" % ( self.repodir,)
+
             # write the default config for user's reference so he/she can
             # tweak it later on
             with open( usercfg, "w" ) as f:
@@ -67,7 +72,8 @@ class BuildManager():
                         {   'repodir': self.repodir,
                             'builddir': self.builddir,
                             'installdir': self.installdir,
-                            'deploydir': self.deploydir } }
+                            'deploydir': self.deploydir,
+                            'tmpdir': self.tmpdir } }
                 # write a pretty json for their amusement
                 f.write( json.dumps( cfg, indent=4, separators=(',',': ') ) )
 
@@ -118,18 +124,18 @@ class BuildManager():
             if os.path.isfile( fname ):
                 os.unlink( fname )
 
-    def checkIsDeployed( self, pkgname, version ):
+    def checkIsBuilt( self, pkgname, version ):
         fname = self.resolve( "{installdir}/{pkgname}-{version}.done",
                               {'pkgname':pkgname,'version':version} )
         return os.path.isfile( fname )
 
-    def deploy( self, pkgname, version=None ):
-        print "Requested deploy package [%s] version [%s]" % (pkgname,version)
+    def build( self, pkgname, version=None ):
+        print "Requested build package [%s] version [%s]" % (pkgname,version)
 
         # Executes all steps to retrieve this package, compile and install in
         # its final destination.
         # First, attempt to check if there are any dependencies. If so, attempt
-        # to install/deploy them first. Note that the order of the dependencies
+        # to build them first. Note that the order of the dependencies
         # IS important
         pkg = self.getPackage( pkgname, version )
         if version is None:
@@ -138,35 +144,62 @@ class BuildManager():
         else:
             print "Package",pkgname,"version:", version, " found:", pkg.get('version')
         self.versions[pkgname+'-version'] = pkg.get('version')
-        for deps in self.getDependencies( pkgname, version ):
-            if isinstance(deps,list):
+
+        alldependencies = self.getDependencies( pkgname, version )
+        for deps in alldependencies:
+            if isinstance(deps,list) or isinstance(deps,tuple):
                 depname,depver = deps
             else:
                 depname = deps
                 depver  = None
-            if not self.deploy( depname, depver ):
+            if not self.build( depname, depver ):
                 print "Dependency was not satisfied. Bailing out..."
                 return False
 
         # Now that the dependencies are installed, finally proceed with this
         # package's installation procedures.
-        # TODO Perhaps we should add a completion test for the configure(), make(),
-        # install() and deploy() steps in the same way we do with checkout()
+        # TODO Perhaps we should add a completion test for the configure(), make()
+        # and install() steps in the same way we do with checkout()
         print "Searching for builder for package [%s] version [%s]" %(pkgname,version)
         bld = self.getBuilder( pkgname, version )
 
         # Check if this package is already deployed
         # we use the builder's version because ours can be None
-        if self.checkIsDeployed( pkgname, bld.version ):
+        if self.checkIsBuilt( pkgname, bld.version ):
             print "Package",pkgname,bld.version,': nothing to do'
             return True
 
+        # sync all dependencies to deploydir
+        deploydir = self.resolve( "{deploydir}" )
+        print ">> Removing ",deploydir
+        if os.path.exists( deploydir ):
+            shutil.rmtree( deploydir )
+        os.makedirs( deploydir )
+        for depname,depver in alldependencies:
+            print ">> Deploying ", depname, depver
+            dep = self.getBuilder( depname, depver )
+            dep.deploy()
+
+        # substitute PATH and LD_LIBRARY_PATH to use our libraries by default
+        oldPATH = os.environ.get("PATH","")
+        oldLIBPATH = os.environ.get("LD_LIBRARY_PATH","")
+        os.environ['PATH'] = ":".join( [oldPATH,self.resolve( "{deploydir}/bin:{deploydir}/x86_64-unknown-linux-gnu/bin" ) ] )
+        os.environ['LD_LIBRARY_PATH'] = self.resolve( "{deploydir}/lib:{deploydir}/lib64:{deploydir}/x86_64-unknown-linux-gnu/lib" )
+
         # Not deployed, go through the compilation process again
-        ok = bld.checkout() and \
-              bld.configure() and \
-              bld.make() and \
-              bld.install() and \
-              bld.deploy()
+        try:
+            ok = bld.checkout() and \
+                 bld.configure() and \
+                 bld.make() and \
+                 bld.install()
+        except Exception, e:
+            ok = False
+            print "Exception caught building ", pkgname, version
+            print e
+
+        # restore our PATH and LD_LIBRARY_PATH
+        os.environ['PATH'] = oldPATH
+        os.environ['LD_LIBRARY_PATH'] = oldLIBPATH
 
         # update this package's status
         self.updateStatus( pkgname, bld.version, ok )
@@ -183,10 +216,20 @@ class BuildManager():
         # and check for None. We want to return an empty list not None
         # so the for loop does not break
         pkg = self.getPackage( pkgname, version )
-        deps = pkg.get('depends')
-        if deps is None:
+        pending = pkg.get('depends')
+        if pending is None:
             return []
-        return deps
+        deps = {}
+        while len(pending)>0:
+            depname = pending.pop()
+            namver = depname.split('-')
+            #print "depname:",depname, " namver:", namver
+            dep = self.getPackage( *namver )
+            #print "dep:", dep
+            if (dep['name'] not in deps) and (not dep['name']==pkgname):
+                deps.update( {dep['name']: dep['version']} )
+                pending.append( "%s-%s" % (dep['name'],dep['version']) )
+        return deps.items()
 
     def getBuilder( self, pkgname, version=None ):
         # Retrieve the builder object responsible for this particular
@@ -364,18 +407,28 @@ class Builder:
     def download( self, url, pkgfile ):
         if os.path.exists( pkgfile ):
             return True
-        try:
-            print "Downloading [%s] from [%s]" % (pkgfile,url)
-            usock = urllib2.urlopen(url)
-            data = usock.read()
-            usock.close()
-            with open( pkgfile, 'w' ) as fout:
-                fout.write( data )
-            print "[%s] downloaded to [%s]" % (url, pkgfile)
-        except Exception, e:
-            print >> sys.stderr, "Exception while downloading [%s]: %s" \
-                                  % (url,e)
+
+        print "Downloading [%s] from [%s]" % (pkgfile,url)
+        count = 0
+        data = None
+        while True:
+            try:
+                usock = urllib2.urlopen(url,timeout=15)
+                data = usock.read()
+                usock.close()
+                break
+            except Exception, e:
+                print >> sys.stderr, "Exception while downloading",url
+                print >> sys.stderr, e
+                count += 1
+                if count == 5:
+                    print "Giving up..."
+                    break
+        if not data:
             return False
+        with open( pkgfile, 'w' ) as fout:
+            fout.write( data )
+        print "[%s] downloaded to [%s]" % (url, pkgfile)
         return True
 
     def checkout( self ):
@@ -481,7 +534,7 @@ class Builder:
         # Try to get the make command from package configuration
         # Otherwise go with just 'make'
         cmd = self.pkg.get('make') or \
-          "make -j "
+          "make -j %d " % (multiprocessing.cpu_count())
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
@@ -539,15 +592,6 @@ if __name__=="__main__":
         print mgr.dumpEnvironment()
         sys.exit(0)
 
-    # substitute PATH and LD_LIBRARY_PATH to use our librareis by default
-    os.environ['PATH'] = ":".join( ( mgr.resolve( "{deploydir}/bin" ),
-                                     mgr.resolve( "{deploydir}/x86_64-unknown-linux-gnu/bin" ),
-                                     os.environ.get('PATH','') ) )
-    os.environ['LD_LIBRARY_PATH'] = ":".join( ( mgr.resolve( "{deploydir}/lib" ),
-                                                mgr.resolve( "{deploydir}/lib64" ),
-                                                mgr.resolve( "{deploydir}/x86_64_-unknown-linux-gnu/lib" ),
-                                                os.environ.get('LD_LIBRARY_PATH','') ) )
-
     if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
         opt.packages = mgr.getAllPackages()
 
@@ -557,6 +601,6 @@ if __name__=="__main__":
         pkgname,version = mgr.parse( pkg )
         if pkgname is None:
             print "Package string",pkg,"does not match any in database"
-        else:
-            if not mgr.deploy( pkgname, version ):
-                break
+            continue
+        if not mgr.build( pkgname, version ):
+            break
