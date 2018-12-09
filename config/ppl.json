@@ -3,6 +3,5 @@
     "depends": ["gmp"],
     "url":       "http://bugseng.com/external/ppl/download/ftp/releases/{version}/ppl-{version}.tar.gz",
     "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}",
-    "make": "make -j2"
+    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}"
 } ]

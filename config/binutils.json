@@ -1,7 +1,16 @@
-[ {
+[
+    {
+    "version":   "2.31",
+    "depends":  ["zlib"],
+    "url":       "http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "./configure --prefix={installdir}/{dirname} --with-sysroot={deploydir}"
+    },
+    {
     "version":   "2.25",
     "depends":  ["zlib"],
     "url":       "http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname} --with-sysroot={deploydir}"
-} ]
+    }
+]
