@@ -5,6 +5,7 @@ import subprocess
 import urllib2
 import shutil
 import json
+import gzip
 import shutil
 import copy
 import imp
@@ -13,6 +14,8 @@ from datetime import datetime
 import argparse
 import platform as plat
 import multiprocessing
+import tempfile
+import StringIO
 
 def nowstr():
     # Helper to provide timestamp for logging. It's in local time
@@ -24,7 +27,8 @@ class BuildManager():
     # by providing a tag like 'bleeding', 'stable', 'fred', etc
     # Make sure these tags exist in the configs otherwise you will end up
     # empty handed as it will not match anything
-    def __init__( self, location = "default",
+    def __init__( self,
+                  location = "default",
                   tags = ['default',],
                   platform=plat.system(),
                   config="~/.bleedingedge.json" ):
@@ -34,6 +38,7 @@ class BuildManager():
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
+        self.numjobs = multiprocessing.cpu_count()
 
         # you can specify several locations in your ~/.bleedingedge.json file
         # the default would be just 'default'
@@ -162,6 +167,7 @@ class BuildManager():
         # and install() steps in the same way we do with checkout()
         print "Searching for builder for package [%s] version [%s]" %(pkgname,version)
         bld = self.getBuilder( pkgname, version )
+        bld.numjobs = self.numjobs
 
         # Check if this package is already deployed
         # we use the builder's version because ours can be None
@@ -309,11 +315,11 @@ class BuildManager():
             if (version is not None) and (vs==version):
                 return item
             # no, canonicalize the version so to pick the best
-            key =  [ '%-5s' % v for v in vs.split('.') ]
+            key =  [ '%-5s' % v for v in vs.replace('_','.').split('.') ]
             allvs.append( (key,item) )
 
         # try to find one version whose key is equal or greater the spec
-        vskey = [ '%-5s' % v for v in version.split('.') ] if version else None
+        vskey = [ '%-5s' % v for v in version.replace('_','.').split('.') ] if version else None
         for key,item in sorted( allvs, key=lambda x: x[0], reverse=True ):
             if (not version) or (key<vskey):
                 # As the configs are sorted in reverse order, the first
@@ -323,20 +329,49 @@ class BuildManager():
         # otherwise, return the first version available if everything was wrong
         return js[0]
 
+    # Reads ubuntu version files (trusty, bionic, etc)
+    def readUbuntuTag( self, tag ):
+            #try:
+            url = "https://packages.ubuntu.com/%s/allpackages?format=txt.gz" % (tag,)
+            print "Url:", url
+            datagz = urllib2.urlopen( url, timeout=15 )
+            lre = re.compile( "^(\S+)\s+\((\S+)\)\s+\[(\S+)\]" )
+            tagmap = None
+            tmpio = StringIO.StringIO()
+            tmpio.write( datagz.read() )
+            tmpio.seek(0)
+            gz = gzip.GzipFile( fileobj=tmpio )
+
+            tagmap = {}
+            for line in gz:
+                line = line.strip()
+                g = lre.match( line )
+                if g:
+                    name,version,universe = g.groups()
+                    #print "Tag", tag, "  pkg:", name, "  ver:", version
+                    tagmap[name] = version.split('-')[0]
+            gz.close()
+            tmpio.close()
+
+            return tagmap
+
     def readTags( self, tags ):
         # produces a dict of tag => { pkgname => match } for this package
         ver = {}
         for tag in tags:
             fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
-            if not os.path.isfile( fname ):
-                print "Tag",tag,"does not exist!"
-                continue
-            try:
-                with open(fname,'r') as f:
-                    tagmap = json.loads( f.read() )
-            except Exception, e:
-                print "Tag file",fname," Exception",e
-                return None
+            if os.path.isfile( fname ):
+                try:
+                    with open(fname,'r') as f:
+                        tagmap = json.loads( f.read() )
+                except Exception, e:
+                    print "Tag file",fname," Exception",e
+                    return None
+            else:
+                tagmap = self.readUbuntuTag( tag )
+                if not tagmap:
+                    print "Tag",tag,"does not exist!"
+                    continue
             pkgmap = {}
             for pkgname,verlist in tagmap.iteritems():
                 if isinstance(verlist,basestring):
@@ -379,6 +414,7 @@ class Builder:
         self.buildmgr = buildmgr
         self.pkgname  = pkgname
         self.version  = version
+        self.numjobs  = multiprocessing.cpu_count()
         self.pkg      = buildmgr.getPackage( pkgname, version )
         if self.version != self.pkg['version']:
             print "Replacing",pkgname,"version",version,"with",self.pkg['version']
@@ -479,11 +515,11 @@ class Builder:
                 errf.write( "Could not identify a valid extension in [%s] for extraction" % (pkgfile,) )
             return False
         if ext=='tar.gz':
-            cmd = 'cd {builddir} && tar xzvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xzf {pkgfile}'
         elif ext=='tar.xz':
-            cmd = 'cd {builddir} && tar xJvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xJf {pkgfile}'
         elif ext=='tar.bz2':
-            cmd = 'cd {builddir} && tar xjvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xjf {pkgfile}'
         elif ext=='zip':
             cmd = 'mkdir -p {builddir}/{name}-{version} && cd {builddir}/{name}.{version}/ && unzip {pkgfile}'
         status = self.runcmd( cmd )
@@ -534,7 +570,7 @@ class Builder:
         # Try to get the make command from package configuration
         # Otherwise go with just 'make'
         cmd = self.pkg.get('make') or \
-          "make -j %d " % (multiprocessing.cpu_count())
+          "make -j %d " % (self.numjobs,)
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
@@ -577,6 +613,7 @@ if __name__=="__main__":
     parser.add_argument( '--location', '-l', default='default')
     parser.add_argument( '--platform', '-p', default=plat.system())
     parser.add_argument( '--config', '-c', default='~/.bleedingedge.json')
+    parser.add_argument( '--jobs', '-j', default=multiprocessing.cpu_count() )
     parser.add_argument( '--dump-environ', '-e', dest='dumpenv',
                          action='store_true', default=False )
     opt = parser.parse_args()
@@ -587,6 +624,7 @@ if __name__=="__main__":
 
     mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
     mgr = BuildManager( tags=mytags, location=opt.location, config=opt.config )
+    mgr.numjobs = int( opt.jobs )
 
     if opt.dumpenv:
         print mgr.dumpEnvironment()

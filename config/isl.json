@@ -1,6 +1,6 @@
 [
 {
-    "version":   "0.12",
+    "version":   "0.20",
     "url":       "http://isl.gforge.inria.fr/isl-{version}.tar.gz",
     "depends": [ "libtool","shtool" ],
     "dirname":   "{name}-{version}",

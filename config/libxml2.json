@@ -1,6 +1,14 @@
-[ {
+[
+    {
     "version":   "git",
     "url":       "git://git.gnome.org/libxml2",
     "dirname":   "{name}-{version}",
     "configure": "./autogen.sh && ./configure --prefix={installdir}/{dirname} --with-python-install-dir={installdir}/{dirname}"
-} ]
+    },
+    {
+    "version":   "2.9.4",
+    "url":       "ftp://xmlsoft.org/libxml2/libxml2-{version}.tar.gz",
+    "dirname":   "{name}-{version}",
+    "configure": "./autogen.sh && ./configure --prefix={installdir}/{dirname} --with-python-install-dir={installdir}/{dirname}"
+    }
+]

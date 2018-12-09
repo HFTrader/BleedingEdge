@@ -1,5 +1,5 @@
 [ {
-    "version":   "1.2.8",
+    "version":   "1.2.11",
     "url":       "http://zlib.net/{name}-{version}.tar.gz",
     "dirname":   "{name}-{version}",
     "configure": "./configure --prefix={installdir}/{dirname}"
