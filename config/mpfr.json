@@ -1,5 +1,5 @@
 [ {
-    "version":   "3.1.2",
+    "version":   "3.1.3",
     "depends": ["gmp"],
     "url":       "http://www.mpfr.org/mpfr-current/{dirname}.tar.gz",
     "dirname":   "{name}-{version}",

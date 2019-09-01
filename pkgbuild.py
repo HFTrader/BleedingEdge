@@ -281,6 +281,7 @@ class BuildManager():
         return js[0]
 
     def readTags( self, tags ):
+        print "ReadTags:", tags
         # produces a dict of tag => { pkgname => match } for this package
         ver = {}
         for tag in tags:
@@ -305,10 +306,13 @@ class BuildManager():
         return ver
 
     def matchTags( self, pkgname, version ):
+
         for tag,pkgmap in self.tags.iteritems():
             rexpr = pkgmap.get(pkgname)
             if (rexpr is None) or (rexpr.match(version) is None):
+                print "Match(",pkgname,",",version,")=False", rexpr
                 return False
+        print "Match(",pkgname,",",version,")=True"
         return True
 
     def resolve( self, newval, pkg=None ):

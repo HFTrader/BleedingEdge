@@ -1,5 +1,5 @@
 [ {
-    "version":   "1.8.13",
+    "version":   "1.9.3",
     "depends": ["apr","apr-util","sqlite"],
     "url":       "http://mirrors.koehn.com/apache/subversion/subversion-{version}.tar.bz2",
     "dirname":   "{name}-{version}",
