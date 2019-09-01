@@ -3,7 +3,9 @@ import os
 import sys
 import subprocess
 import urllib2
+import shutil
 import json
+import gzip
 import shutil
 import copy
 import imp
@@ -11,6 +13,9 @@ import re,fnmatch
 from datetime import datetime
 import argparse
 import platform as plat
+import multiprocessing
+import tempfile
+import StringIO
 
 def nowstr():
     # Helper to provide timestamp for logging. It's in local time
@@ -22,7 +27,8 @@ class BuildManager():
     # by providing a tag like 'bleeding', 'stable', 'fred', etc
     # Make sure these tags exist in the configs otherwise you will end up
     # empty handed as it will not match anything
-    def __init__( self, location = "default",
+    def __init__( self,
+                  location = "default",
                   tags = ['default',],
                   platform=plat.system(),
                   config="~/.bleedingedge.json" ):
@@ -32,6 +38,7 @@ class BuildManager():
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
+        self.numjobs = multiprocessing.cpu_count()
 
         # you can specify several locations in your ~/.bleedingedge.json file
         # the default would be just 'default'
@@ -53,6 +60,7 @@ class BuildManager():
             self.builddir = setjs.get('builddir') or "%s/%s" % (self.repodir,'build')
             self.installdir = setjs.get('installdir') or "%s/%s" % (self.repodir,'install')
             self.deploydir  = setjs.get('deploydir')  or "%s/%s" % (self.repodir,'deploy')
+            self.tmpdir     = setjs.get('tmpdir') or "%s/%s" % (self.repodir,'tmp')
         else:
             # this is a new system - set the defaults to the directory that
             # contains this script
@@ -60,6 +68,8 @@ class BuildManager():
             self.builddir =  "%s/build" % (self.repodir,)
             self.installdir = "%s/install" % (self.repodir,)
             self.deploydir  = "%s/deploy" % (self.repodir,)
+            self.tmpdir     = "%s/tmp" % ( self.repodir,)
+
             # write the default config for user's reference so he/she can
             # tweak it later on
             with open( usercfg, "w" ) as f:
@@ -67,7 +77,8 @@ class BuildManager():
                         {   'repodir': self.repodir,
                             'builddir': self.builddir,
                             'installdir': self.installdir,
-                            'deploydir': self.deploydir } }
+                            'deploydir': self.deploydir,
+                            'tmpdir': self.tmpdir } }
                 # write a pretty json for their amusement
                 f.write( json.dumps( cfg, indent=4, separators=(',',': ') ) )
 
@@ -118,18 +129,18 @@ class BuildManager():
             if os.path.isfile( fname ):
                 os.unlink( fname )
 
-    def checkIsDeployed( self, pkgname, version ):
+    def checkIsBuilt( self, pkgname, version ):
         fname = self.resolve( "{installdir}/{pkgname}-{version}.done",
                               {'pkgname':pkgname,'version':version} )
         return os.path.isfile( fname )
 
-    def deploy( self, pkgname, version=None ):
-        print "Requested deploy package [%s] version [%s]" % (pkgname,version)
+    def build( self, pkgname, version=None ):
+        print "Requested build package [%s] version [%s]" % (pkgname,version)
 
         # Executes all steps to retrieve this package, compile and install in
         # its final destination.
         # First, attempt to check if there are any dependencies. If so, attempt
-        # to install/deploy them first. Note that the order of the dependencies
+        # to build them first. Note that the order of the dependencies
         # IS important
         pkg = self.getPackage( pkgname, version )
         if version is None:
@@ -138,35 +149,63 @@ class BuildManager():
         else:
             print "Package",pkgname,"version:", version, " found:", pkg.get('version')
         self.versions[pkgname+'-version'] = pkg.get('version')
-        for deps in self.getDependencies( pkgname, version ):
-            if isinstance(deps,list):
+
+        alldependencies = self.getDependencies( pkgname, version )
+        for deps in alldependencies:
+            if isinstance(deps,list) or isinstance(deps,tuple):
                 depname,depver = deps
             else:
                 depname = deps
                 depver  = None
-            if not self.deploy( depname, depver ):
+            if not self.build( depname, depver ):
                 print "Dependency was not satisfied. Bailing out..."
                 return False
 
         # Now that the dependencies are installed, finally proceed with this
         # package's installation procedures.
-        # TODO Perhaps we should add a completion test for the configure(), make(),
-        # install() and deploy() steps in the same way we do with checkout()
+        # TODO Perhaps we should add a completion test for the configure(), make()
+        # and install() steps in the same way we do with checkout()
         print "Searching for builder for package [%s] version [%s]" %(pkgname,version)
         bld = self.getBuilder( pkgname, version )
+        bld.numjobs = self.numjobs
 
         # Check if this package is already deployed
         # we use the builder's version because ours can be None
-        if self.checkIsDeployed( pkgname, bld.version ):
+        if self.checkIsBuilt( pkgname, bld.version ):
             print "Package",pkgname,bld.version,': nothing to do'
             return True
 
+        # sync all dependencies to deploydir
+        deploydir = self.resolve( "{deploydir}" )
+        print ">> Removing ",deploydir
+        if os.path.exists( deploydir ):
+            shutil.rmtree( deploydir )
+        os.makedirs( deploydir )
+        for depname,depver in alldependencies:
+            print ">> Deploying ", depname, depver
+            dep = self.getBuilder( depname, depver )
+            dep.deploy()
+
+        # substitute PATH and LD_LIBRARY_PATH to use our libraries by default
+        oldPATH = os.environ.get("PATH","")
+        oldLIBPATH = os.environ.get("LD_LIBRARY_PATH","")
+        os.environ['PATH'] = ":".join( [oldPATH,self.resolve( "{deploydir}/bin:{deploydir}/x86_64-unknown-linux-gnu/bin" ) ] )
+        os.environ['LD_LIBRARY_PATH'] = self.resolve( "{deploydir}/lib:{deploydir}/lib64:{deploydir}/x86_64-unknown-linux-gnu/lib" )
+
         # Not deployed, go through the compilation process again
-        ok = bld.checkout() and \
-              bld.configure() and \
-              bld.make() and \
-              bld.install() and \
-              bld.deploy()
+        try:
+            ok = bld.checkout() and \
+                 bld.configure() and \
+                 bld.make() and \
+                 bld.install()
+        except Exception, e:
+            ok = False
+            print "Exception caught building ", pkgname, version
+            print e
+
+        # restore our PATH and LD_LIBRARY_PATH
+        os.environ['PATH'] = oldPATH
+        os.environ['LD_LIBRARY_PATH'] = oldLIBPATH
 
         # update this package's status
         self.updateStatus( pkgname, bld.version, ok )
@@ -183,10 +222,20 @@ class BuildManager():
         # and check for None. We want to return an empty list not None
         # so the for loop does not break
         pkg = self.getPackage( pkgname, version )
-        deps = pkg.get('depends')
-        if deps is None:
+        pending = pkg.get('depends')
+        if pending is None:
             return []
-        return deps
+        deps = {}
+        while len(pending)>0:
+            depname = pending.pop()
+            namver = depname.split('-')
+            #print "depname:",depname, " namver:", namver
+            dep = self.getPackage( *namver )
+            #print "dep:", dep
+            if (dep['name'] not in deps) and (not dep['name']==pkgname):
+                deps.update( {dep['name']: dep['version']} )
+                pending.append( "%s-%s" % (dep['name'],dep['version']) )
+        return deps.items()
 
     def getBuilder( self, pkgname, version=None ):
         # Retrieve the builder object responsible for this particular
@@ -266,11 +315,11 @@ class BuildManager():
             if (version is not None) and (vs==version):
                 return item
             # no, canonicalize the version so to pick the best
-            key =  [ '%-5s' % v for v in vs.split('.') ]
+            key =  [ '%-5s' % v for v in vs.replace('_','.').split('.') ]
             allvs.append( (key,item) )
 
         # try to find one version whose key is equal or greater the spec
-        vskey = [ '%-5s' % v for v in version.split('.') ] if version else None
+        vskey = [ '%-5s' % v for v in version.replace('_','.').split('.') ] if version else None
         for key,item in sorted( allvs, key=lambda x: x[0], reverse=True ):
             if (not version) or (key<vskey):
                 # As the configs are sorted in reverse order, the first
@@ -280,21 +329,50 @@ class BuildManager():
         # otherwise, return the first version available if everything was wrong
         return js[0]
 
+    # Reads ubuntu version files (trusty, bionic, etc)
+    def readUbuntuTag( self, tag ):
+            #try:
+            url = "https://packages.ubuntu.com/%s/allpackages?format=txt.gz" % (tag,)
+            print "Url:", url
+            datagz = urllib2.urlopen( url, timeout=15 )
+            lre = re.compile( "^(\S+)\s+\((\S+)\)\s+\[(\S+)\]" )
+            tagmap = None
+            tmpio = StringIO.StringIO()
+            tmpio.write( datagz.read() )
+            tmpio.seek(0)
+            gz = gzip.GzipFile( fileobj=tmpio )
+
+            tagmap = {}
+            for line in gz:
+                line = line.strip()
+                g = lre.match( line )
+                if g:
+                    name,version,universe = g.groups()
+                    #print "Tag", tag, "  pkg:", name, "  ver:", version
+                    tagmap[name] = version.split('-')[0]
+            gz.close()
+            tmpio.close()
+
+            return tagmap
+
     def readTags( self, tags ):
         print "ReadTags:", tags
         # produces a dict of tag => { pkgname => match } for this package
         ver = {}
         for tag in tags:
             fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
-            if not os.path.isfile( fname ):
-                print "Tag",tag,"does not exist!"
-                continue
-            try:
-                with open(fname,'r') as f:
-                    tagmap = json.loads( f.read() )
-            except Exception, e:
-                print "Tag file",fname," Exception",e
-                return None
+            if os.path.isfile( fname ):
+                try:
+                    with open(fname,'r') as f:
+                        tagmap = json.loads( f.read() )
+                except Exception, e:
+                    print "Tag file",fname," Exception",e
+                    return None
+            else:
+                tagmap = self.readUbuntuTag( tag )
+                if not tagmap:
+                    print "Tag",tag,"does not exist!"
+                    continue
             pkgmap = {}
             for pkgname,verlist in tagmap.iteritems():
                 if isinstance(verlist,basestring):
@@ -340,6 +418,7 @@ class Builder:
         self.buildmgr = buildmgr
         self.pkgname  = pkgname
         self.version  = version
+        self.numjobs  = multiprocessing.cpu_count()
         self.pkg      = buildmgr.getPackage( pkgname, version )
         if self.version != self.pkg['version']:
             print "Replacing",pkgname,"version",version,"with",self.pkg['version']
@@ -368,18 +447,28 @@ class Builder:
     def download( self, url, pkgfile ):
         if os.path.exists( pkgfile ):
             return True
-        try:
-            print "Downloading [%s] from [%s]" % (pkgfile,url)
-            usock = urllib2.urlopen(url)
-            data = usock.read()
-            usock.close()
-            with open( pkgfile, 'w' ) as fout:
-                fout.write( data )
-            print "[%s] downloaded to [%s]" % (url, pkgfile)
-        except Exception, e:
-            print >> sys.stderr, "Exception while downloading [%s]: %s" \
-                                  % (url,e)
+
+        print "Downloading [%s] from [%s]" % (pkgfile,url)
+        count = 0
+        data = None
+        while True:
+            try:
+                usock = urllib2.urlopen(url,timeout=15)
+                data = usock.read()
+                usock.close()
+                break
+            except Exception, e:
+                print >> sys.stderr, "Exception while downloading",url
+                print >> sys.stderr, e
+                count += 1
+                if count == 5:
+                    print "Giving up..."
+                    break
+        if not data:
             return False
+        with open( pkgfile, 'w' ) as fout:
+            fout.write( data )
+        print "[%s] downloaded to [%s]" % (url, pkgfile)
         return True
 
     def checkout( self ):
@@ -430,11 +519,11 @@ class Builder:
                 errf.write( "Could not identify a valid extension in [%s] for extraction" % (pkgfile,) )
             return False
         if ext=='tar.gz':
-            cmd = 'cd {builddir} && tar xzvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xzf {pkgfile}'
         elif ext=='tar.xz':
-            cmd = 'cd {builddir} && tar xJvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xJf {pkgfile}'
         elif ext=='tar.bz2':
-            cmd = 'cd {builddir} && tar xjvf {pkgfile}'
+            cmd = 'cd {builddir} && tar xjf {pkgfile}'
         elif ext=='zip':
             cmd = 'mkdir -p {builddir}/{name}-{version} && cd {builddir}/{name}.{version}/ && unzip {pkgfile}'
         status = self.runcmd( cmd )
@@ -485,7 +574,7 @@ class Builder:
         # Try to get the make command from package configuration
         # Otherwise go with just 'make'
         cmd = self.pkg.get('make') or \
-          "make -j "
+          "make -j %d " % (self.numjobs,)
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
@@ -528,6 +617,7 @@ if __name__=="__main__":
     parser.add_argument( '--location', '-l', default='default')
     parser.add_argument( '--platform', '-p', default=plat.system())
     parser.add_argument( '--config', '-c', default='~/.bleedingedge.json')
+    parser.add_argument( '--jobs', '-j', default=multiprocessing.cpu_count() )
     parser.add_argument( '--dump-environ', '-e', dest='dumpenv',
                          action='store_true', default=False )
     opt = parser.parse_args()
@@ -538,19 +628,11 @@ if __name__=="__main__":
 
     mytags = opt.tags.split(',') if isinstance(opt.tags,str) else opt.tags
     mgr = BuildManager( tags=mytags, location=opt.location, config=opt.config )
+    mgr.numjobs = int( opt.jobs )
 
     if opt.dumpenv:
         print mgr.dumpEnvironment()
         sys.exit(0)
-
-    # substitute PATH and LD_LIBRARY_PATH to use our librareis by default
-    os.environ['PATH'] = ":".join( ( mgr.resolve( "{deploydir}/bin" ),
-                                     mgr.resolve( "{deploydir}/x86_64-unknown-linux-gnu/bin" ),
-                                     os.environ.get('PATH','') ) )
-    os.environ['LD_LIBRARY_PATH'] = ":".join( ( mgr.resolve( "{deploydir}/lib" ),
-                                                mgr.resolve( "{deploydir}/lib64" ),
-                                                mgr.resolve( "{deploydir}/x86_64_-unknown-linux-gnu/lib" ),
-                                                os.environ.get('LD_LIBRARY_PATH','') ) )
 
     if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
         opt.packages = mgr.getAllPackages()
@@ -561,6 +643,6 @@ if __name__=="__main__":
         pkgname,version = mgr.parse( pkg )
         if pkgname is None:
             print "Package string",pkg,"does not match any in database"
-        else:
-            if not mgr.deploy( pkgname, version ):
-                break
+            continue
+        if not mgr.build( pkgname, version ):
+            break

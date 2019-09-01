@@ -13,8 +13,9 @@ The key design aspects are:
 3. Support multiple versions of the same package
 4. Have the ability to select individual versions of packages by the use of tags
 5. Be able to deploy into different locations (think `--prefix <installdir>`)
+6. Handle dynamic dependencies properly
 
-This project is possible thanks to [Vitorian LLC](http://www.vitorian.com) and [HB Quant] (http://www.hbquant.com).
+This project is possible thanks to [Vitorian LLC](http://www.vitorian.com).
 
 ## How it works
 
