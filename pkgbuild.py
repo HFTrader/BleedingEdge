@@ -1,10 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import os
 import sys
 import subprocess
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import shutil
 import json
+import yaml
 import gzip
 import shutil
 import copy
@@ -15,7 +16,7 @@ import argparse
 import platform as plat
 import multiprocessing
 import tempfile
-import StringIO
+import io
 
 def nowstr():
     # Helper to provide timestamp for logging. It's in local time
@@ -32,9 +33,11 @@ class BuildManager():
                   tags = ['default',],
                   platform=plat.system(),
                   config="~/.bleedingedge.json" ):
+
         # This is the default platform
         self.platform = platform
         self.versions = {}
+
         # as default-ready, get the path of this script
         thisscript = os.path.realpath(__file__)
         self.thisdir = os.path.dirname( thisscript )
@@ -53,7 +56,7 @@ class BuildManager():
                 js = json.loads( f.read() )
             setjs = js.get( location )
             if setjs is None:
-                print "*** ERROR Location",location,"is not specified in",usercfg
+                print("*** ERROR Location",location,"is not specified in",usercfg)
                 return
             # default all to repodir/... whenever not specified
             self.repodir = setjs.get('repodir') or self.thisdir
@@ -87,15 +90,15 @@ class BuildManager():
             try:
                 if not os.path.exists( dname ):
                     os.makedirs( dname )
-                    print "Created directory", dname
-            except Exception, e:
-                print "Exception while creating", dname, ": ", e
+                    print("Created directory", dname)
+            except Exception as e:
+                print("Exception while creating", dname, ": ", e)
             if not os.path.exists( dname ):
-                print >> sys.stderr, "Error: could not create ", dname
+                print("Error: could not create ", dname, file=sys.stderr)
             else:
                 if not os.path.isdir( dname ):
-                    print >> sys.stderr, "Error: path exists but is not", \
-                        "a directory:", dname
+                    print("Error: path exists but is not", \
+                        "a directory:", dname, file=sys.stderr)
 
     def dumpEnvironment( self ):
         cmd = """
@@ -135,7 +138,7 @@ class BuildManager():
         return os.path.isfile( fname )
 
     def build( self, pkgname, version=None ):
-        print "Requested build package [%s] version [%s]" % (pkgname,version)
+        print("Requested build package [%s] version [%s]" % (pkgname,version))
 
         # Executes all steps to retrieve this package, compile and install in
         # its final destination.
@@ -145,9 +148,9 @@ class BuildManager():
         pkg = self.getPackage( pkgname, version )
         if version is None:
             version = pkg.get('version')
-            print "Package",pkgname,"version not provided, found:", version
+            print("Package",pkgname,"version not provided, found:", version)
         else:
-            print "Package",pkgname,"version:", version, " found:", pkg.get('version')
+            print("Package",pkgname,"version:", version, " found:", pkg.get('version'))
         self.versions[pkgname+'-version'] = pkg.get('version')
 
         alldependencies = self.getDependencies( pkgname, version )
@@ -158,31 +161,31 @@ class BuildManager():
                 depname = deps
                 depver  = None
             if not self.build( depname, depver ):
-                print "Dependency was not satisfied. Bailing out..."
+                print("Dependency was not satisfied. Bailing out...")
                 return False
 
         # Now that the dependencies are installed, finally proceed with this
         # package's installation procedures.
         # TODO Perhaps we should add a completion test for the configure(), make()
         # and install() steps in the same way we do with checkout()
-        print "Searching for builder for package [%s] version [%s]" %(pkgname,version)
+        print("Searching for builder for package [%s] version [%s]" %(pkgname,version))
         bld = self.getBuilder( pkgname, version )
         bld.numjobs = self.numjobs
 
         # Check if this package is already deployed
         # we use the builder's version because ours can be None
         if self.checkIsBuilt( pkgname, bld.version ):
-            print "Package",pkgname,bld.version,': nothing to do'
+            print("Package",pkgname,bld.version,': nothing to do')
             return True
 
         # sync all dependencies to deploydir
         deploydir = self.resolve( "{deploydir}" )
-        print ">> Removing ",deploydir
+        print(">> Removing ",deploydir)
         if os.path.exists( deploydir ):
             shutil.rmtree( deploydir )
         os.makedirs( deploydir )
         for depname,depver in alldependencies:
-            print ">> Deploying ", depname, depver
+            print(">> Deploying ", depname, depver)
             dep = self.getBuilder( depname, depver )
             dep.deploy()
 
@@ -198,10 +201,10 @@ class BuildManager():
                  bld.configure() and \
                  bld.make() and \
                  bld.install()
-        except Exception, e:
+        except Exception as e:
             ok = False
-            print "Exception caught building ", pkgname, version
-            print e
+            print("Exception caught building ", pkgname, version)
+            print(e)
 
         # restore our PATH and LD_LIBRARY_PATH
         os.environ['PATH'] = oldPATH
@@ -212,10 +215,14 @@ class BuildManager():
         return ok
 
     def getAllPackages( self ):
+        # get the path where the package configuration is located
         cfgdir = os.path.join( self.thisdir, 'config' )
-        return [ v[:-5] for v in os.listdir( cfgdir )
+
+        # list all files ending in .json or .yaml and take the unique set of them
+        pkgs = set([ v.rsplit('.',1)[0] for v in os.listdir( cfgdir )
                     if os.path.isfile( os.path.join(cfgdir,v) )
-                    and v.endswith('.json') ]
+                    and (v.endswith('.json') or v.endswith('.yaml')) ])
+        return list(pkgs)
 
     def getDependencies( self, pkgname, version=None ):
         # Simply return the 'depends' field in the config file
@@ -235,7 +242,7 @@ class BuildManager():
             if (dep['name'] not in deps) and (not dep['name']==pkgname):
                 deps.update( {dep['name']: dep['version']} )
                 pending.append( "%s-%s" % (dep['name'],dep['version']) )
-        return deps.items()
+        return list(deps.items())
 
     def getBuilder( self, pkgname, version=None ):
         # Retrieve the builder object responsible for this particular
@@ -277,19 +284,25 @@ class BuildManager():
         # Then, we need to find a configuration file for this package
         # that resides on the same directory than this script, in
         # config/<packagename>.{platform}.json
-        if self.platform=="Linux":
-            pkgfile = '%s/config/%s.json' % (self.thisdir,pkgname)
-        else:
+        js = None
+        for ext in ['.json','yaml']:
+            if self.platform=="Linux":
+                pkgfile = '%s/config/%s' % (self.thisdir,pkgname)
             pkgfile = '%s/config/%s.%s.json' % (self.thisdir,pkgname,self.platform)
-        if not os.path.exists( pkgfile ):
-            print "**** ERROR: Package file",pkgfile,"is missing"
-            print "            Should be on",pkgfile
-            return None
-        try:
-            with open( pkgfile, "rb" ) as f:
-                js = json.loads( f.read() )
-        except Exception, e:
-            print "Exception while reading from file",pkgfile,":", e
+            if os.path.exists( pkgfile ):
+                try:
+                    with open( pkgfile, "rb" ) as f:
+                        data = f.read()
+                    if pkgfile.endswith( '.json' ):
+                        js = json.loads( data )
+                    elif pkgfile.endswith( '.yaml' ):
+                        js = yaml.load( data )
+                except Exception as e:
+                        print("Exception while reading from file",pkgfile,":", e)
+                        return None
+
+        if js is None:
+            print("**** ERROR: Package file",pkgfile,"is missing")
             return None
 
         # The file can be a list of configurations or just one
@@ -297,8 +310,8 @@ class BuildManager():
         if isinstance( js, dict ):
             # Returns it only if this config's tag matches what we've specified
             if self.matchTags( pkgname, js['version'] ):
-                print "Could not find a valid configuration with tags:"
-                print '    ', ','.join(self.tags)
+                print("Could not find a valid configuration with tags:")
+                print('    ', ','.join(self.tags))
                 return None
             return js
 
@@ -333,11 +346,11 @@ class BuildManager():
     def readUbuntuTag( self, tag ):
             #try:
             url = "https://packages.ubuntu.com/%s/allpackages?format=txt.gz" % (tag,)
-            print "Url:", url
-            datagz = urllib2.urlopen( url, timeout=15 )
+            print("Url:", url)
+            datagz = urllib.request.urlopen( url, timeout=15 )
             lre = re.compile( "^(\S+)\s+\((\S+)\)\s+\[(\S+)\]" )
             tagmap = None
-            tmpio = StringIO.StringIO()
+            tmpio = io.StringIO()
             tmpio.write( datagz.read() )
             tmpio.seek(0)
             gz = gzip.GzipFile( fileobj=tmpio )
@@ -356,7 +369,7 @@ class BuildManager():
             return tagmap
 
     def readTags( self, tags ):
-        print "ReadTags:", tags
+        print("ReadTags:", tags)
         # produces a dict of tag => { pkgname => match } for this package
         ver = {}
         for tag in tags:
@@ -365,17 +378,17 @@ class BuildManager():
                 try:
                     with open(fname,'r') as f:
                         tagmap = json.loads( f.read() )
-                except Exception, e:
-                    print "Tag file",fname," Exception",e
+                except Exception as e:
+                    print("Tag file",fname," Exception",e)
                     return None
             else:
                 tagmap = self.readUbuntuTag( tag )
                 if not tagmap:
-                    print "Tag",tag,"does not exist!"
+                    print("Tag",tag,"does not exist!")
                     continue
             pkgmap = {}
-            for pkgname,verlist in tagmap.iteritems():
-                if isinstance(verlist,basestring):
+            for pkgname,verlist in tagmap.items():
+                if isinstance(verlist,str):
                     verlist = (verlist,)
                 matchstr = '|'.join('(?:{0})'.format(fnmatch.translate(x))
                                     for x in verlist)
@@ -385,12 +398,12 @@ class BuildManager():
 
     def matchTags( self, pkgname, version ):
 
-        for tag,pkgmap in self.tags.iteritems():
+        for tag,pkgmap in self.tags.items():
             rexpr = pkgmap.get(pkgname)
             if (rexpr is None) or (rexpr.match(version) is None):
-                print "Match(",pkgname,",",version,")=False", rexpr
+                print("Match(",pkgname,",",version,")=False", rexpr)
                 return False
-        print "Match(",pkgname,",",version,")=True"
+        print("Match(",pkgname,",",version,")=True")
         return True
 
     def resolve( self, newval, pkg=None ):
@@ -421,7 +434,7 @@ class Builder:
         self.numjobs  = multiprocessing.cpu_count()
         self.pkg      = buildmgr.getPackage( pkgname, version )
         if self.version != self.pkg['version']:
-            print "Replacing",pkgname,"version",version,"with",self.pkg['version']
+            print("Replacing",pkgname,"version",version,"with",self.pkg['version'])
         self.version  = self.pkg['version']
         self.logfile = self.resolve( "{builddir}/{dirname}.log" )
         self.errfile = self.resolve( "{builddir}/{dirname}.err" )
@@ -448,27 +461,27 @@ class Builder:
         if os.path.exists( pkgfile ):
             return True
 
-        print "Downloading [%s] from [%s]" % (pkgfile,url)
+        print("Downloading [%s] from [%s]" % (pkgfile,url))
         count = 0
         data = None
         while True:
             try:
-                usock = urllib2.urlopen(url,timeout=15)
+                usock = urllib.request.urlopen(url,timeout=15)
                 data = usock.read()
                 usock.close()
                 break
-            except Exception, e:
-                print >> sys.stderr, "Exception while downloading",url
-                print >> sys.stderr, e
+            except Exception as e:
+                print("Exception while downloading",url, file=sys.stderr)
+                print(e, file=sys.stderr)
                 count += 1
                 if count == 5:
-                    print "Giving up..."
+                    print("Giving up...")
                     break
         if not data:
             return False
         with open( pkgfile, 'w' ) as fout:
             fout.write( data )
-        print "[%s] downloaded to [%s]" % (url, pkgfile)
+        print("[%s] downloaded to [%s]" % (url, pkgfile))
         return True
 
     def checkout( self ):
@@ -487,7 +500,7 @@ class Builder:
             self.pkg['pkgfile'] = pkgfile
         fullpath = self.resolve( '{builddir}/{dirname}' )
         if os.path.exists( fullpath ):
-            print "Removing existing path", fullpath
+            print("Removing existing path", fullpath)
             shutil.rmtree( fullpath )
         if url.startswith( 'svn:' ):
             cmd = "cd {builddir} && svn co {url} {dirname}"
@@ -511,7 +524,7 @@ class Builder:
         # Currently it understands gzip, bz2, xz and zip
         # This has not been tested with zip!!!
         if os.path.exists( fullpath ):
-            print "Removing existing path", fullpath
+            print("Removing existing path", fullpath)
             shutil.rmtree( fullpath )
         ext = self.pkg.get('ext') or self.filetype( pkgfile )
         if not ext:
@@ -528,24 +541,24 @@ class Builder:
             cmd = 'mkdir -p {builddir}/{name}-{version} && cd {builddir}/{name}.{version}/ && unzip {pkgfile}'
         status = self.runcmd( cmd )
         if status!=0:
-            print "Command failed with status", status
+            print("Command failed with status", status)
         return status == 0
 
     def runcmd( self, cmd ):
         # Run a system command, funneling stdout and stderr to the respective
         # configuration logs
         cmd = self.resolve( cmd )
-        print "Exec:", cmd
+        print("Exec:", cmd)
         pc = subprocess.Popen( cmd,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
                                shell=True )
         try:
             out,err = pc.communicate()
-        except Exception, e:
-            print "Exception running", cmd, ":", e
+        except Exception as e:
+            print("Exception running", cmd, ":", e)
         if pc.returncode != 0:
-            print '\n'.join( err.split('\n')[-30:] )
+            print('\n'.join( err.split('\n')[-30:] ))
         logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
         with open( self.logfile, 'a+' ) as logf:
             logf.write( logstr )
@@ -566,7 +579,7 @@ class Builder:
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
-            print "Command failed with status %d" % (status)
+            print("Command failed with status %d" % (status))
             return False
         return True
 
@@ -578,7 +591,7 @@ class Builder:
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
-            print "Command failed with status %d" % (status)
+            print("Command failed with status %d" % (status))
             return False
         return True
 
@@ -591,8 +604,8 @@ class Builder:
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
-            print "Command failed with status %d" % (status)
-            print "Check log files",self.logfile,"and",self.errfile
+            print("Command failed with status %d" % (status))
+            print("Check log files",self.logfile,"and",self.errfile)
             return False
         return True
 
@@ -605,8 +618,8 @@ class Builder:
         cmd = "cd {builddir}/{dirname} && " + cmd
         status = self.runcmd( cmd )
         if status!=0:
-            print "Command failed with status %d" % (status)
-            print "Check log files",self.logfile,"and",self.errfile
+            print("Command failed with status %d" % (status))
+            print("Check log files",self.logfile,"and",self.errfile)
             return False
         return True
 
@@ -631,7 +644,7 @@ if __name__=="__main__":
     mgr.numjobs = int( opt.jobs )
 
     if opt.dumpenv:
-        print mgr.dumpEnvironment()
+        print(mgr.dumpEnvironment())
         sys.exit(0)
 
     if len(opt.packages)==1 and (opt.packages[0].lower()=='all'):
@@ -642,7 +655,7 @@ if __name__=="__main__":
         # (pkgname,version) = (apache,maven-3.3.3) or (apache-maven,3.3.3)?
         pkgname,version = mgr.parse( pkg )
         if pkgname is None:
-            print "Package string",pkg,"does not match any in database"
+            print("Package string",pkg,"does not match any in database")
             continue
         if not mgr.build( pkgname, version ):
             break
