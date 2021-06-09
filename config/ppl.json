@@ -1,7 +1,0 @@
-[ {
-    "version":   "1.2",
-    "depends": ["gmp"],
-    "url":       "http://bugseng.com/external/ppl/download/ftp/releases/LATEST/ppl-{version}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}"
-} ]

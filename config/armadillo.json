@@ -1,9 +1,0 @@
-[ {
-    "version":   "5.200.1",
-    "url":       "http://sourceforge.net/projects/arma/files/armadillo-{version}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "depends":   [ "openblas" ],
-    "configure": "mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX:PATH={installdir}/{dirname} -DCMAKE_BUILD_TYPE=release ..",
-    "make": "cd build && make",
-    "install": "cd build && make install"
-} ]

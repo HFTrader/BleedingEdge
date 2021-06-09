@@ -1,8 +1,0 @@
-[
-{
-    "version":   "0.17",
-    "url":       "http://isl.gforge.inria.fr/isl-{version}.tar.gz",
-    "depends": [ "libtool","shtool","gmp" ],
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-gmp-prefix={deploydir}"
-} ]

@@ -1,7 +1,0 @@
-[ {
-    "version":   "1.0.3",
-    "depends": ["gmp","mpfr"],
-    "url":       "https://ftp.gnu.org/gnu/mpc/{dirname}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --disable-static --prefix={installdir}/{dirname} --with-gmp={deploydir} --with-mpfr={deploydir}"
-} ]

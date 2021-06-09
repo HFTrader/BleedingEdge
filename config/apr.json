@@ -1,6 +1,0 @@
-[ {
-    "version":   "1.5.2",
-    "url":       "http://archive.apache.org/dist/apr/apr-{version}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}"
-} ]

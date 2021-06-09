@@ -1,8 +1,0 @@
-[ {
-    "version":   "1.3.1",
-    "depends":   "maven",
-    "url":       "http://www.interior-dsgn.com/apache/spark/spark-{version}/spark-{version}.tgz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname}",
-    "make": "mvn -DskipTests clean package"
-} ]

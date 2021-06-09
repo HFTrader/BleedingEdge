@@ -285,24 +285,28 @@ class BuildManager():
         # that resides on the same directory than this script, in
         # config/<packagename>.{platform}.json
         js = None
-        for ext in ['.json','yaml']:
-            if self.platform=="Linux":
-                pkgfile = '%s/config/%s' % (self.thisdir,pkgname)
-            pkgfile = '%s/config/%s.%s.json' % (self.thisdir,pkgname,self.platform)
+        alltried = []
+        for ext in ['json','yaml']:
+          for inner in [ '.' + self.platform + '.', '.' ]:
+            pkgfile = '%s/config/%s%s%s' % (self.thisdir,pkgname,inner,ext)
+            alltried.append( pkgfile )
             if os.path.exists( pkgfile ):
                 try:
                     with open( pkgfile, "rb" ) as f:
                         data = f.read()
-                    if pkgfile.endswith( '.json' ):
+                    if ext == 'json':
                         js = json.loads( data )
-                    elif pkgfile.endswith( '.yaml' ):
+                        break
+                    elif ext == 'yaml':
                         js = yaml.load( data )
+                        break
                 except Exception as e:
                         print("Exception while reading from file",pkgfile,":", e)
                         return None
 
         if js is None:
-            print("**** ERROR: Package file",pkgfile,"is missing")
+            namestr= ", ".join( alltried )
+            print("**** ERROR: Package file",pkgname,"is missing. Tried:", namestr )
             return None
 
         # The file can be a list of configurations or just one
@@ -320,6 +324,7 @@ class BuildManager():
         # organize by version number
         allvs = []
         for item in js:
+            print( yaml.dump( item ) )
             # pass if this config does not have our tag
             if not self.matchTags( pkgname, item['version'] ):
                 continue
@@ -350,7 +355,7 @@ class BuildManager():
             datagz = urllib.request.urlopen( url, timeout=15 )
             lre = re.compile( "^(\S+)\s+\((\S+)\)\s+\[(\S+)\]" )
             tagmap = None
-            tmpio = io.StringIO()
+            tmpio = io.BytesIO()
             tmpio.write( datagz.read() )
             tmpio.seek(0)
             gz = gzip.GzipFile( fileobj=tmpio )
@@ -373,11 +378,11 @@ class BuildManager():
         # produces a dict of tag => { pkgname => match } for this package
         ver = {}
         for tag in tags:
-            fname = os.path.join( self.thisdir, "tags/%s.json" % tag )
+            fname = os.path.join( self.thisdir, "tags/%s.yaml" % tag )
             if os.path.isfile( fname ):
                 try:
                     with open(fname,'r') as f:
-                        tagmap = json.loads( f.read() )
+                        tagmap = yaml.load( f.read() )
                 except Exception as e:
                     print("Tag file",fname," Exception",e)
                     return None
@@ -397,7 +402,7 @@ class BuildManager():
         return ver
 
     def matchTags( self, pkgname, version ):
-
+        print( "Matching",pkgname," to version", version )
         for tag,pkgmap in self.tags.items():
             rexpr = pkgmap.get(pkgname)
             if (rexpr is None) or (rexpr.match(version) is None):
@@ -558,7 +563,8 @@ class Builder:
         except Exception as e:
             print("Exception running", cmd, ":", e)
         if pc.returncode != 0:
-            print('\n'.join( err.split('\n')[-30:] ))
+            print( err )
+            #print('\n'.join( err.split('\n')[-30:] ))
         logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
         with open( self.logfile, 'a+' ) as logf:
             logf.write( logstr )

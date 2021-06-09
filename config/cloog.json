@@ -1,7 +1,0 @@
-[ {
-    "version":   "0.18.4",
-    "depends": [ "gmp","isl" ],
-    "url":       "http://www.bastoul.net/cloog/pages/download/cloog-{version}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-isl-prefix={deploydir} --with-gmp-prefix={deploydir}"
-} ]

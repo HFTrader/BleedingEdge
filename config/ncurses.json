@@ -1,6 +1,0 @@
-[ {
-    "version":   "5.9",
-    "url":       "http://ftp.gnu.org/pub/gnu/ncurses/{dirname}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --without-cxx-binding --with-shared"
-} ]

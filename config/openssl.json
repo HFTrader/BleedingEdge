@@ -1,7 +1,0 @@
-[ {
-    "version":   "1_1_0j",
-    "depends": [ "zlib" ],
-    "url":       "https://github.com/openssl/openssl/archive/OpenSSL_1_1_0j.tar.gz",
-    "dirname":   "openssl-OpenSSL_{version}",
-    "configure": "./config --api=1.1.0 zlib-dynamic --prefix={installdir}/{dirname}"
-} ]

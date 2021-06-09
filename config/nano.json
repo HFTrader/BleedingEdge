@@ -1,7 +1,0 @@
-[ {
-    "version":   "2.4.1",
-    "depends": ["ncurses"],
-    "url":       "http://www.nano-editor.org/dist/v2.4/{dirname}.tar.gz",
-    "dirname":   "{name}-{version}",
-    "configure": "./configure --prefix={installdir}/{dirname} --with-ncurses"
-} ]
