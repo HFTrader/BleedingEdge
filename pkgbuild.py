@@ -148,7 +148,7 @@ class BuildManager():
         pkg = self.getPackage( pkgname, version )
         if version is None:
             version = pkg.get('version')
-            print("Package",pkgname,"version not provided, found:", version)
+            #print("Package",pkgname,"version not provided, found:", version)
         else:
             print("Package",pkgname,"version:", version, " found:", pkg.get('version'))
         self.versions[pkgname+'-version'] = pkg.get('version')
@@ -196,14 +196,11 @@ class BuildManager():
         os.environ['LD_LIBRARY_PATH'] = self.resolve( "{deploydir}/lib:{deploydir}/lib64:{deploydir}/x86_64-unknown-linux-gnu/lib" )
 
         # Not deployed, go through the compilation process again
+        ok = False
         try:
-            ok = bld.checkout() and \
-                 bld.configure() and \
-                 bld.make() and \
-                 bld.install()
+            ok = bld.checkout() and bld.configure() and bld.make() and bld.install()
         except Exception as e:
-            ok = False
-            print("Exception caught building ", pkgname, version)
+            print("Exception caught checking out ", pkgname, version)
             print(e)
 
         # restore our PATH and LD_LIBRARY_PATH
@@ -324,7 +321,7 @@ class BuildManager():
         # organize by version number
         allvs = []
         for item in js:
-            print( yaml.dump( item ) )
+            #print( yaml.dump( item ) )
             # pass if this config does not have our tag
             if not self.matchTags( pkgname, item['version'] ):
                 continue
@@ -402,13 +399,13 @@ class BuildManager():
         return ver
 
     def matchTags( self, pkgname, version ):
-        print( "Matching",pkgname," to version", version )
+        #print( "Matching",pkgname," to version", version )
         for tag,pkgmap in self.tags.items():
             rexpr = pkgmap.get(pkgname)
             if (rexpr is None) or (rexpr.match(version) is None):
-                print("Match(",pkgname,",",version,")=False", rexpr)
+                #print("Match(",pkgname,",",version,")=False", rexpr)
                 return False
-        print("Match(",pkgname,",",version,")=True")
+        #print("Match(",pkgname,",",version,")=True")
         return True
 
     def resolve( self, newval, pkg=None ):
@@ -471,9 +468,8 @@ class Builder:
         data = None
         while True:
             try:
-                usock = urllib.request.urlopen(url,timeout=15)
-                data = usock.read()
-                usock.close()
+                with urllib.request.urlopen(url,timeout=15) as usock:
+                    data = usock.read()
                 break
             except Exception as e:
                 print("Exception while downloading",url, file=sys.stderr)
@@ -484,7 +480,7 @@ class Builder:
                     break
         if not data:
             return False
-        with open( pkgfile, 'w' ) as fout:
+        with open( pkgfile, 'wb' ) as fout:
             fout.write( data )
         print("[%s] downloaded to [%s]" % (url, pkgfile))
         return True
@@ -528,6 +524,8 @@ class Builder:
         # extracts the file (name) passed into the canonical directory
         # Currently it understands gzip, bz2, xz and zip
         # This has not been tested with zip!!!
+        # For "tar" we could have used the "a" option which figures out the decompression method
+        # However older tar might not support it (think RH7)
         if os.path.exists( fullpath ):
             print("Removing existing path", fullpath)
             shutil.rmtree( fullpath )
@@ -568,11 +566,11 @@ class Builder:
         logstr = "%s %s\n%s\n" % ("*"*30, nowstr(), cmd)
         with open( self.logfile, 'a+' ) as logf:
             logf.write( logstr )
-            logf.write( out )
+            logf.write( str(out) )
             logf.flush()
         with open( self.errfile, 'a+' ) as errf:
             errf.write( logstr )
-            errf.write( err )
+            errf.write( str(err) )
             errf.flush()
         return pc.returncode
 
