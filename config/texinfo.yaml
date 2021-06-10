@@ -1,0 +1,4 @@
+- {configure: './configure --prefix={installdir}/{dirname}', configure2: 'LIBS=''-ltermcap''
+    ./configure --prefix={installdir}/{dirname}', dirname: '{name}-{version}', url: 'http://ftp.gnu.org/gnu/texinfo/texinfo-{version}.tar.gz',
+  version: '5.2'}
+

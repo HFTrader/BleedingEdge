@@ -1,0 +1,12 @@
+- configure:
+    ./configure --prefix={installdir}/{dirname}
+    --enable-languages=c,c++,fortran
+    --enable-threads=posix --enable-tls --enable-libgomp  --enable-lto  --disable-nls
+    --disable-checking --disable-multilib --disable-libstdcxx-pch --disable-bootstrap --with-fpmath=sse
+    --program-suffix=-{version} --enable-__cxa_atexit --with-long-double-128 --enable-secureplt
+    --with-ld={deploydir}/bin/ld --with-as={deploydir}/bin/as --with-gmp={deploydir}
+    --with-mpfr={deploydir} --with-mpc={deploydir}
+  depends: [binutils, libelf, libtool, mpc, mpfr, gmp ]
+  dirname: '{name}-{version}'
+  url: ftp://gcc.gnu.org/pub/gcc/releases/{dirname}/{dirname}.tar.gz
+  version: 7.3.0

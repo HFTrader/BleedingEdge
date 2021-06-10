@@ -1,0 +1,9 @@
+- configure: mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX:PATH={installdir}/{dirname}
+    -DCMAKE_BUILD_TYPE=release ..
+  depends: [openblas]
+  dirname: '{name}-{version}'
+  install: cd build && make install
+  make: cd build && make
+  url: http://sourceforge.net/projects/arma/files/armadillo-{version}.tar.gz
+  version: 5.200.1
+

@@ -1,0 +1,8 @@
+- configure: echo done
+  depends: [gcc]
+  dirname: '{name}-{version}'
+  install: make install PREFIX={installdir}/{dirname}
+  make: make -j
+  url: https://github.com/xianyi/OpenBLAS.git
+  version: git
+

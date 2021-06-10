@@ -1,0 +1,28 @@
+- configure: mkdir build; cd build; cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX={installdir}/{dirname} -DLLVM_ENABLE_ASSERTIONS=No -DLLVM_TARGETS_TO_BUILD=X86
+    -DLLVM_ENABLE_CXX1Y=ON ..
+  depends: [cmake]
+  dirname: '{name}-{version}'
+  install: cd {builddir}/clang-{version}/build; make install
+  make: cd {builddir}/clang-{version}/build; make -j
+  url: http://llvm.org/releases/{version}
+  version: svn
+- configure: mkdir build; cd build; cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX={installdir}/{dirname} -DLLVM_ENABLE_ASSERTIONS=No -DLLVM_TARGETS_TO_BUILD=X86
+    -DLLVM_ENABLE_CXX1Y=ON ..
+  depends: [cmake, gcc-5.3.0]
+  dirname: '{name}-{version}'
+  install: cd {builddir}/clang-{version}/build; make install
+  make: cd {builddir}/clang-{version}/build; make -j
+  url: http://llvm.org/releases/{version}
+  version: 3.7.1
+- configure: mkdir build; cd build; cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX={installdir}/{dirname} -DLLVM_ENABLE_ASSERTIONS=No -DLLVM_TARGETS_TO_BUILD=X86
+    -DLLVM_ENABLE_CXX1Y=ON ..
+  depends: [cmake]
+  dirname: '{name}-{version}'
+  install: cd {builddir}/clang-{version}/build; make install
+  make: cd {builddir}/clang-{version}/build; make -j
+  url: http://llvm.org/releases/{version}
+  version: 3.5.2
+

@@ -1,0 +1,3 @@
+- {configure: './configure --prefix={installdir}/{dirname}', dirname: '{name}-autoconf-3081002',
+  url: 'https://www.sqlite.org/2015/sqlite-autoconf-3081002.tar.gz', version: 3.8.10.2}
+

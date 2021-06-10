@@ -1,0 +1,7 @@
+- configure: ./configure --disable-static --prefix={installdir}/{dirname} --with-gmp={deploydir}
+    --with-mpfr={deploydir}
+  depends: [gmp, mpfr]
+  dirname: '{name}-{version}'
+  url: https://ftp.gnu.org/gnu/mpc/{dirname}.tar.gz
+  version: 1.0.3
+

@@ -1,0 +1,4 @@
+- {configure: 'cat Makefile | sed ''s/\/usr\/local/\.\.\/\.\.\/install\/{dirname}/''
+    > mk.1; cp Makefile Makefile.old; cp mk.1 Makefile; make linux', dirname: '{name}-{version}',
+  url: 'http://www.lua.org/ftp/{dirname}.tar.gz', version: 5.1.5}
+

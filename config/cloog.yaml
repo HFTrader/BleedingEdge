@@ -1,0 +1,7 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-isl-prefix={deploydir}
+    --with-gmp-prefix={deploydir}
+  depends: [gmp, isl]
+  dirname: '{name}-{version}'
+  url: http://www.bastoul.net/cloog/pages/download/cloog-{version}.tar.gz
+  version: 0.18.4
+

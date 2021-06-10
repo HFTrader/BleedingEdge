@@ -1,0 +1,4 @@
+- {configure: './configure --with-sysroot=/usr --disable-static --enable-cxx --prefix={installdir}/{dirname}',
+  dirname: '{name}-{version}', url: 'https://gmplib.org/download/gmp/{dirname}.tar.bz2',
+  version: 6.1.2}
+

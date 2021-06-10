@@ -1,0 +1,4 @@
+- {configure: './configure --prefix={installdir}/{dirname} --without-cxx-binding --with-shared',
+  dirname: '{name}-{version}', url: 'http://ftp.gnu.org/pub/gnu/ncurses/{dirname}.tar.gz',
+  version: '5.9'}
+

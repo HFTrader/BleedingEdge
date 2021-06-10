@@ -1,0 +1,11 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-sysroot={deploydir}
+  depends: [zlib]
+  dirname: '{name}-{version}'
+  url: http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz
+  version: '2.31'
+- configure: ./configure --prefix={installdir}/{dirname} --with-sysroot={deploydir}
+  depends: [zlib]
+  dirname: '{name}-{version}'
+  url: http://ftp.gnu.org/gnu/binutils/{dirname}.tar.gz
+  version: '2.25'
+

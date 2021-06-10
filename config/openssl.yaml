@@ -1,0 +1,6 @@
+- configure: ./config --api=1.1.0 zlib-dynamic --prefix={installdir}/{dirname}
+  depends: [zlib]
+  dirname: openssl-OpenSSL_{version}
+  url: https://github.com/openssl/openssl/archive/OpenSSL_1_1_0j.tar.gz
+  version: 1_1_0j
+

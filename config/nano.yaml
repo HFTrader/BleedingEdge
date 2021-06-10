@@ -1,0 +1,6 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-ncurses
+  depends: [ncurses]
+  dirname: '{name}-{version}'
+  url: http://www.nano-editor.org/dist/v2.4/{dirname}.tar.gz
+  version: 2.4.1
+

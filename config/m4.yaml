@@ -1,0 +1,6 @@
+- configure: ./configure --prefix={installdir}/{dirname}
+  depends: [zlib]
+  dirname: '{name}-{version}'
+  url: http://ftp.gnu.org/gnu/m4/m4-{version}.tar.gz
+  version: 1.4.18
+

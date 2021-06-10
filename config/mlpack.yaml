@@ -1,0 +1,13 @@
+- configure: mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX:PATH={installdir}/{dirname}
+    -DDEBUG=OFF -DPROFILE=OFF -DARMADILLO_INCLUDE_DIR:PATH={deploydir}/include -DARMADILLO_LIBRARY:PATH={deploydir}/lib/libarmadillo.so
+    -DCMAKE_BUILD_TYPE=release ..
+  depends: [armadillo, cmake, libxml2, boost]
+  dirname: '{name}-{version}'
+  install: cd build && make install
+  make: cd build && make -j
+  url: https://github.com/mlpack/mlpack.git
+  version: git
+- {configure: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release .., dirname: '{name}-{version}',
+  install: cd build && make install, make: 'cd build && make -j ', url: 'http://www.mlpack.org/files/mlpack-{version}.tar.gz',
+  version: 1.0.12}
+

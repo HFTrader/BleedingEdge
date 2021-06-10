@@ -1,0 +1,7 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-apr={deploydir} --with-apr-util={deploydir}
+    --with-sqlite={deploydir}
+  depends: [apr, apr-util, sqlite]
+  dirname: '{name}-{version}'
+  url: http://mirrors.koehn.com/apache/subversion/subversion-{version}.tar.bz2
+  version: 1.9.3
+

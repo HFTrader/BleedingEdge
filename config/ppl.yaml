@@ -1,0 +1,6 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-gmp={deploydir}
+  depends: [gmp]
+  dirname: '{name}-{version}'
+  url: http://bugseng.com/external/ppl/download/ftp/releases/LATEST/ppl-{version}.tar.gz
+  version: '1.2'
+

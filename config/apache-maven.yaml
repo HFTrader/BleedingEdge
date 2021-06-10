@@ -1,0 +1,4 @@
+- {configure: './configure --prefix={installdir}/{dirname}', dirname: '{name}-{version}',
+  url: 'http://apache.arvixe.com/maven/maven-3/{version}/source/{name}-{version}-src.tar.gz',
+  version: 3.3.3}
+

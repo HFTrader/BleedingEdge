@@ -1,0 +1,6 @@
+- configure: ./configure --prefix={installdir}/{dirname} --with-gmp-prefix={deploydir}
+  depends: [libtool, shtool, gmp]
+  dirname: '{name}-{version}'
+  url: http://isl.gforge.inria.fr/isl-{version}.tar.gz
+  version: '0.17'
+

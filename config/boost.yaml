@@ -1,0 +1,4 @@
+- {configure: './bootstrap.sh --prefix=. && ./bjam -j8 --prefix={installdir}/{name}-{version}
+    install', dirname: boost_1_58_0, ext: tar.gz, url: 'http://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.tar.gz/download',
+  version: 1.58.0}
+

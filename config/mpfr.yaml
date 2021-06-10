@@ -1,0 +1,6 @@
+- configure: ./configure --disable-static --prefix={installdir}/{dirname} --with-gmp={installdir}/gmp-6.0.0
+  depends: [gmp]
+  dirname: '{name}-{version}'
+  url: http://www.mpfr.org/mpfr-{version}/{dirname}.tar.gz
+  version: 3.1.3
+
