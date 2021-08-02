@@ -17,6 +17,8 @@ The key design aspects are:
 
 This project is possible thanks to [Vitorian LLC](http://www.vitorian.com).
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z85JMPK)
+
 ## How it works
 
 The package works with one script as the entry point, the one at root:
