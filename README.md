@@ -17,7 +17,7 @@ The key design aspects are:
 
 This project is possible thanks to [Vitorian LLC](http://www.vitorian.com).
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z85JMPK)
+[![PayPal me](https://www.paypalobjects.com/webstatic/en_US/i/buttons/PP_logo_h_100x26.png)](https://paypal.me/HenriqueBucher?locale.x=en_US)
 
 ## How it works
 
